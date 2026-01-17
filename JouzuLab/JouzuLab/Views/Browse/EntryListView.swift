@@ -16,7 +16,14 @@ struct EntryListView: View {
                     NavigationLink(value: entry) {
                         EntryCard(entry: entry)
                     }
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowInsets(EdgeInsets(
+                        top: AppTheme.Spacing.xs,
+                        leading: AppTheme.Spacing.md,
+                        bottom: AppTheme.Spacing.xs,
+                        trailing: AppTheme.Spacing.md
+                    ))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                         Button {
                             entry.isFavorite.toggle()
@@ -32,6 +39,13 @@ struct EntryListView: View {
             }
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(
+            Color.adaptive(
+                light: AppTheme.Colors.Fallback.backgroundLight,
+                dark: AppTheme.Colors.Fallback.backgroundDark
+            )
+        )
         .searchable(text: $searchText, prompt: "Search Japanese, reading, or English")
         .navigationDestination(for: Entry.self) { entry in
             EntryDetailView(entry: entry)

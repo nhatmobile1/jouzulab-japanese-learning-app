@@ -3,13 +3,20 @@ import SwiftUI
 struct EntryCard: View {
     let entry: Entry
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Japanese Text
-            HStack {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+            // Japanese Text + Badges
+            HStack(alignment: .center, spacing: AppTheme.Spacing.xs) {
                 Text(entry.japanese)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
+                    .font(AppTheme.Typography.japaneseBody)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        )
+                    )
 
                 Spacer()
 
@@ -17,66 +24,98 @@ struct EntryCard: View {
                 if entry.isFavorite {
                     Image(systemName: "star.fill")
                         .foregroundStyle(.yellow)
-                        .font(.caption)
+                        .font(.system(size: 12, weight: .medium))
+                }
+
+                // High frequency indicator
+                if entry.isHighFrequency {
+                    Image(systemName: "flame.fill")
+                        .foregroundStyle(.orange)
+                        .font(.system(size: 12, weight: .medium))
                 }
 
                 // Completion indicator
                 if !entry.isComplete {
                     Image(systemName: "exclamationmark.circle.fill")
-                        .foregroundStyle(.orange)
-                        .font(.caption)
+                        .foregroundStyle(AppTheme.Colors.Fallback.warning)
+                        .font(.system(size: 12, weight: .medium))
                 }
 
                 // Entry type badge
                 Text(entry.entryType.capitalized)
-                    .font(.caption2)
+                    .font(AppTheme.Typography.caption)
                     .fontWeight(.medium)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(entryTypeColor.opacity(0.15))
-                    .foregroundStyle(entryTypeColor)
+                    .padding(.horizontal, AppTheme.Spacing.xs)
+                    .padding(.vertical, AppTheme.Spacing.xxs)
+                    .background(entry.entryType.entryTypeColor.opacity(0.15))
+                    .foregroundStyle(entry.entryType.entryTypeColor)
                     .clipShape(Capsule())
             }
 
             // Reading
             if let reading = entry.reading {
                 Text(reading)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(AppTheme.Typography.reading)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                        )
+                    )
             }
 
             // English
             if let english = entry.english {
                 Text(english)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary.opacity(0.8))
+                    .font(AppTheme.Typography.callout)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                        )
+                    )
                     .lineLimit(2)
             }
-        }
-        .padding(.vertical, 4)
-    }
 
-    private var entryTypeColor: Color {
-        switch entry.entryType {
-        case "vocab": return .blue
-        case "phrase": return .green
-        case "sentence": return .purple
-        default: return .gray
+            // JLPT Level (if available)
+            if let jlptLevel = entry.jlptLevel {
+                HStack(spacing: AppTheme.Spacing.xxs) {
+                    Text(jlptLevel)
+                        .font(AppTheme.Typography.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(jlptLevel.jlptColor)
+                }
+            }
         }
+        .padding(AppTheme.Spacing.sm)
+        .background(
+            Color.adaptive(
+                light: AppTheme.Colors.Fallback.surfaceLight,
+                dark: AppTheme.Colors.Fallback.surfaceDark
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
+        .shadow(
+            color: .black.opacity(colorScheme == .dark ? 0.2 : 0.06),
+            radius: 4,
+            x: 0,
+            y: 2
+        )
     }
 }
 
 // MARK: - Preview
 
 #Preview {
-    List {
+    VStack(spacing: AppTheme.Spacing.md) {
         EntryCard(
             entry: Entry(
                 id: "entry_00001",
                 japanese: "質問が ありますか",
                 reading: "しつもんが ありますか",
                 english: "Do you have any questions?",
-                entryType: "phrase"
+                entryType: "phrase",
+                jlptLevel: "N4"
             )
         )
 
@@ -86,7 +125,9 @@ struct EntryCard: View {
                 japanese: "発音",
                 reading: "はつおん",
                 english: "pronunciation",
-                entryType: "vocab"
+                entryType: "vocab",
+                jlptLevel: "N3",
+                lessonFrequency: 5
             )
         )
 
@@ -100,5 +141,10 @@ struct EntryCard: View {
             )
         )
     }
+    .padding()
+    .background(Color.adaptive(
+        light: AppTheme.Colors.Fallback.backgroundLight,
+        dark: AppTheme.Colors.Fallback.backgroundDark
+    ))
     .modelContainer(for: Entry.self, inMemory: true)
 }

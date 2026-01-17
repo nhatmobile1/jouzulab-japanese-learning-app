@@ -3,10 +3,11 @@ import SwiftData
 
 struct EntryDetailView: View {
     @Bindable var entry: Entry
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
                 // Main Content Card
                 mainContentCard
 
@@ -18,9 +19,15 @@ struct EntryDetailView: View {
                 // Info Section
                 infoSection
             }
-            .padding()
+            .padding(AppTheme.Spacing.md)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(
+            Color.adaptive(
+                light: AppTheme.Colors.Fallback.backgroundLight,
+                dark: AppTheme.Colors.Fallback.backgroundDark
+            )
+            .ignoresSafeArea()
+        )
         .navigationTitle("Entry")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -28,9 +35,10 @@ struct EntryDetailView: View {
                 Button {
                     entry.isFavorite.toggle()
                 } label: {
-                    Image(systemName: entry.isFavorite ? "heart.fill" : "heart")
-                        .foregroundStyle(entry.isFavorite ? .red : .secondary)
+                    Image(systemName: entry.isFavorite ? "star.fill" : "star")
+                        .foregroundStyle(entry.isFavorite ? .yellow : .secondary)
                 }
+                .accessibilityLabel(entry.isFavorite ? "Remove from favorites" : "Add to favorites")
             }
         }
     }
@@ -38,92 +46,160 @@ struct EntryDetailView: View {
     // MARK: - Main Content Card
 
     private var mainContentCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             // Japanese
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 Text("Japanese")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textTertiaryLight,
+                            dark: AppTheme.Colors.Fallback.textTertiaryDark
+                        )
+                    )
                     .textCase(.uppercase)
 
                 Text(entry.japanese)
-                    .font(.system(size: 32, weight: .medium))
+                    .font(AppTheme.Typography.japaneseTitle)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        )
+                    )
             }
 
             Divider()
+                .background(
+                    Color.adaptive(
+                        light: AppTheme.Colors.Fallback.textTertiaryLight,
+                        dark: AppTheme.Colors.Fallback.textTertiaryDark
+                    ).opacity(0.3)
+                )
 
             // Reading
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 Text("Reading")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textTertiaryLight,
+                            dark: AppTheme.Colors.Fallback.textTertiaryDark
+                        )
+                    )
                     .textCase(.uppercase)
 
                 if let reading = entry.reading {
                     Text(reading)
-                        .font(.title2)
-                        .foregroundStyle(.primary)
+                        .font(AppTheme.Typography.japaneseHeadline)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textPrimaryLight,
+                                dark: AppTheme.Colors.Fallback.textPrimaryDark
+                            )
+                        )
                 } else {
                     Text("No reading available")
-                        .font(.body)
-                        .foregroundStyle(.tertiary)
+                        .font(AppTheme.Typography.body)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textTertiaryLight,
+                                dark: AppTheme.Colors.Fallback.textTertiaryDark
+                            )
+                        )
                         .italic()
                 }
             }
 
             Divider()
+                .background(
+                    Color.adaptive(
+                        light: AppTheme.Colors.Fallback.textTertiaryLight,
+                        dark: AppTheme.Colors.Fallback.textTertiaryDark
+                    ).opacity(0.3)
+                )
 
             // English
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 Text("English")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textTertiaryLight,
+                            dark: AppTheme.Colors.Fallback.textTertiaryDark
+                        )
+                    )
                     .textCase(.uppercase)
 
                 if let english = entry.english {
                     Text(english)
-                        .font(.title3)
-                        .foregroundStyle(.primary)
+                        .font(AppTheme.Typography.headline)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textPrimaryLight,
+                                dark: AppTheme.Colors.Fallback.textPrimaryDark
+                            )
+                        )
                 } else {
                     Text("No translation available")
-                        .font(.body)
-                        .foregroundStyle(.tertiary)
+                        .font(AppTheme.Typography.body)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textTertiaryLight,
+                                dark: AppTheme.Colors.Fallback.textTertiaryDark
+                            )
+                        )
                         .italic()
                 }
             }
 
             // Completion Status
             if !entry.isComplete {
-                HStack {
+                HStack(spacing: AppTheme.Spacing.xs) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(AppTheme.Colors.Fallback.warning)
                     Text("Incomplete entry")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                dark: AppTheme.Colors.Fallback.textSecondaryDark
+                            )
+                        )
                 }
-                .padding(.top, 8)
+                .padding(.top, AppTheme.Spacing.xs)
             }
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(AppTheme.Spacing.md)
+        .cardStyle()
     }
 
     // MARK: - Metadata Section
 
     private var metadataSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             // Tags
             if !entry.tags.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
                     Text("Scenarios")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textTertiaryLight,
+                                dark: AppTheme.Colors.Fallback.textTertiaryDark
+                            )
+                        )
                         .textCase(.uppercase)
 
-                    FlowLayout(spacing: 8) {
+                    FlowLayout(spacing: AppTheme.Spacing.xs) {
                         ForEach(entry.tags, id: \.self) { tag in
-                            TagChip(text: tag, color: .blue)
+                            TagChip(
+                                text: tag.capitalized,
+                                color: Color.adaptive(
+                                    light: AppTheme.Colors.Fallback.primaryLight,
+                                    dark: AppTheme.Colors.Fallback.primaryDark
+                                )
+                            )
                         }
                     }
                 }
@@ -131,72 +207,121 @@ struct EntryDetailView: View {
 
             // Grammar Patterns
             if !entry.grammarPatterns.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
                     Text("Grammar Patterns")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textTertiaryLight,
+                                dark: AppTheme.Colors.Fallback.textTertiaryDark
+                            )
+                        )
                         .textCase(.uppercase)
 
-                    FlowLayout(spacing: 8) {
+                    FlowLayout(spacing: AppTheme.Spacing.xs) {
                         ForEach(entry.grammarPatterns, id: \.self) { pattern in
-                            TagChip(text: pattern, color: .purple)
+                            TagChip(
+                                text: pattern,
+                                color: Color.adaptive(
+                                    light: AppTheme.Colors.Fallback.secondaryLight,
+                                    dark: AppTheme.Colors.Fallback.secondaryDark
+                                )
+                            )
                         }
                     }
                 }
             }
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(AppTheme.Spacing.md)
+        .cardStyle()
     }
 
     // MARK: - Info Section
 
     private var infoSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("Details")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(AppTheme.Typography.caption)
+                .foregroundStyle(
+                    Color.adaptive(
+                        light: AppTheme.Colors.Fallback.textTertiaryLight,
+                        dark: AppTheme.Colors.Fallback.textTertiaryDark
+                    )
+                )
                 .textCase(.uppercase)
 
             VStack(spacing: 0) {
-                InfoRow(label: "Type", value: entry.entryType.capitalized)
-                Divider().padding(.leading)
+                DetailInfoRow(label: "Type", value: entry.entryType.capitalized)
 
                 if let lessonDate = entry.lessonDate {
-                    InfoRow(label: "Lesson Date", value: lessonDate)
-                    Divider().padding(.leading)
+                    DetailInfoRow(label: "Lesson Date", value: lessonDate)
                 }
 
                 if let jlptLevel = entry.jlptLevel {
-                    InfoRow(label: "JLPT Level", value: jlptLevel)
-                    Divider().padding(.leading)
+                    DetailInfoRow(
+                        label: "JLPT Level",
+                        value: jlptLevel,
+                        valueColor: jlptLevel.jlptColor
+                    )
                 }
 
-                InfoRow(label: "Entry ID", value: entry.id)
+                if entry.lessonFrequency > 1 {
+                    DetailInfoRow(
+                        label: "Frequency",
+                        value: "\(entry.lessonFrequency) occurrences",
+                        valueColor: entry.isHighFrequency ? .orange : nil
+                    )
+                }
+
+                DetailInfoRow(label: "Entry ID", value: entry.id, isLast: true)
             }
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(AppTheme.Spacing.md)
+        .cardStyle()
     }
 }
 
-// MARK: - Info Row
+// MARK: - Detail Info Row
 
-struct InfoRow: View {
+struct DetailInfoRow: View {
     let label: String
     let value: String
+    var valueColor: Color?
+    var isLast: Bool = false
 
     var body: some View {
-        HStack {
-            Text(label)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(value)
-                .foregroundStyle(.primary)
+        VStack(spacing: 0) {
+            HStack {
+                Text(label)
+                    .font(AppTheme.Typography.callout)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                        )
+                    )
+                Spacer()
+                Text(value)
+                    .font(AppTheme.Typography.callout)
+                    .foregroundStyle(
+                        valueColor ?? Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        )
+                    )
+            }
+            .padding(.vertical, AppTheme.Spacing.sm)
+
+            if !isLast {
+                Divider()
+                    .background(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textTertiaryLight,
+                            dark: AppTheme.Colors.Fallback.textTertiaryDark
+                        ).opacity(0.2)
+                    )
+            }
         }
-        .padding(.vertical, 10)
     }
 }
 
@@ -208,10 +333,10 @@ struct TagChip: View {
 
     var body: some View {
         Text(text)
-            .font(.caption)
+            .font(AppTheme.Typography.caption)
             .fontWeight(.medium)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, AppTheme.Spacing.sm)
+            .padding(.vertical, AppTheme.Spacing.xs)
             .background(color.opacity(0.15))
             .foregroundStyle(color)
             .clipShape(Capsule())
@@ -278,7 +403,9 @@ struct FlowLayout: Layout {
                 entryType: "phrase",
                 lessonDate: "2023-02-26",
                 tags: ["general", "greetings"],
-                grammarPatterns: ["ますか"]
+                grammarPatterns: ["ますか"],
+                jlptLevel: "N4",
+                lessonFrequency: 5
             )
         )
     }

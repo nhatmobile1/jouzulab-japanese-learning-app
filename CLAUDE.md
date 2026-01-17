@@ -12,11 +12,11 @@ Self-directed Japanese language learning tool that converts personal lesson note
 
 ## Current Stats
 
-- 10,521 unique entries (deduplicated from 12,173 raw)
+- 10,518 unique entries (deduplicated from 12,173 raw)
 - 270 lesson sessions (Feb 2023 - Jan 2026)
-- 87.6% have furigana readings
-- 38.7% have English translations
-- 49.1% have JLPT level tags (via pattern matching)
+- 89.3% have furigana readings
+- 51.9% have English translations
+- ~54% have JLPT level tags (enriched via Jisho API)
 
 ## Tech Stack
 
@@ -48,8 +48,12 @@ japanese-learning-app/
 │
 ├── scripts/
 │   ├── parse_notes.py                # Parse italki notes to JSON
+│   ├── enrich_vocab.py               # Enrich vocab with readings/English via Jisho API
 │   ├── enrich_jlpt.py                # JLPT level enrichment via Jisho API
 │   └── shadowing_tool.py             # Process video/audio for shadowing
+│
+├── tasks/
+│   └── todo.md                       # Task tracking and planning
 │
 ├── source/
 │   ├── 日本語のレッスンのノート App Edit.txt  # Primary source (ISO dates)
@@ -91,7 +95,8 @@ japanese-learning-app/
   "tags": ["general"],
   "grammar_patterns": [],
   "jlpt_level": "N5",
-  "is_sub_entry": false
+  "is_sub_entry": false,
+  "lesson_frequency": 1
 }
 ```
 
@@ -99,7 +104,9 @@ japanese-learning-app/
 
 **Auto-Tags:** restaurant, shopping, transportation, time, daily_life, family, travel, weather, health, greetings
 
-**JLPT Levels:** N5 (4,609), N4 (275), N3 (282), None (5,355)
+**JLPT Levels:** N5, N4, N3, N2, N1 (enriched via Jisho API)
+
+**Lesson Frequency:** Tracks how many times an entry appeared across lessons (high frequency = 3+)
 
 ## Data Pipeline
 
@@ -137,15 +144,16 @@ open data/media/[source_name]/practice.html
 
 ## Development Phases
 
-### Phase 1: Foundation (MVP) - IN PROGRESS
+### Phase 1: Foundation (MVP) - COMPLETE
 - [x] Project setup with SwiftUI + SwiftData
 - [x] Data import from JSON (batch optimized)
 - [x] Browse entries by scenario
 - [x] Search functionality
 - [x] Entry detail view
 - [x] Shadowing tool ready
-- [ ] Copy updated `japanese_data.json` to Xcode bundle
-- [ ] Test app with new data
+- [x] Favorites/starring (swipe to star, filter toggle)
+- [x] Lesson frequency tracking
+- [x] Vocab enrichment via Jisho API
 - [ ] Basic filtering (entry type, JLPT level)
 
 ### Phase 2: Flashcards & Learning
@@ -168,7 +176,6 @@ open data/media/[source_name]/practice.html
 - [ ] Progress by scenario/JLPT level
 
 ### Phase 4: Polish & Advanced
-- [ ] Favorites/bookmarks
 - [ ] Custom study lists
 - [ ] Dark mode
 - [ ] Widgets
@@ -176,11 +183,10 @@ open data/media/[source_name]/practice.html
 
 ## Next Steps (Immediate)
 
-1. **Update iOS app data** - Copy new `data/japanese_data.json` to `JouzuLab/JouzuLab/Resources/`
-2. **Add JLPT filter** - Allow filtering by N5/N4/N3 in browse view
+1. **Add JLPT filter** - Allow filtering by N5/N4/N3/N2/N1 in browse view
+2. **Add high-frequency filter** - Filter entries with 3+ lesson occurrences
 3. **Process first shadowing content** - Use `shadowing_tool.py` on a video clip
-4. **Run JLPT enrichment** - Use `enrich_jlpt.py` to tag remaining 51% of entries
-5. **Build Phase 2** - Implement flashcard functionality
+4. **Build Phase 2** - Implement flashcard functionality
 
 ## Documentation
 

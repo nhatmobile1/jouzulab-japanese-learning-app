@@ -5,7 +5,25 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var isLoading = true
     @State private var importError: String?
-    @State private var selectedTab = 0
+    @State private var selectedTab: Tab = .home
+
+    enum Tab: String, CaseIterable {
+        case home = "Home"
+        case study = "Study"
+        case shadow = "Shadow"
+        case browse = "Browse"
+        case settings = "Settings"
+
+        var icon: String {
+            switch self {
+            case .home: return "house.fill"
+            case .study: return "rectangle.stack.fill"
+            case .shadow: return "waveform"
+            case .browse: return "book.fill"
+            case .settings: return "gearshape.fill"
+            }
+        }
+    }
 
     var body: some View {
         Group {
@@ -32,7 +50,6 @@ struct ContentView: View {
 
         do {
             if try service.needsImport() {
-                // Use fast initial import on first launch (no duplicate checking)
                 let result = try await service.performInitialImport()
                 print("Imported \(result.imported) entries")
             }
@@ -47,28 +64,44 @@ struct ContentView: View {
 // MARK: - Main Tab View
 
 struct MainTabView: View {
-    @Binding var selectedTab: Int
+    @Binding var selectedTab: ContentView.Tab
 
     var body: some View {
         TabView(selection: $selectedTab) {
+            DashboardView()
+                .tabItem {
+                    Label(ContentView.Tab.home.rawValue, systemImage: ContentView.Tab.home.icon)
+                }
+                .tag(ContentView.Tab.home)
+
+            StudyView()
+                .tabItem {
+                    Label(ContentView.Tab.study.rawValue, systemImage: ContentView.Tab.study.icon)
+                }
+                .tag(ContentView.Tab.study)
+
+            ShadowView()
+                .tabItem {
+                    Label(ContentView.Tab.shadow.rawValue, systemImage: ContentView.Tab.shadow.icon)
+                }
+                .tag(ContentView.Tab.shadow)
+
             BrowseView()
                 .tabItem {
-                    Label("Browse", systemImage: "book")
+                    Label(ContentView.Tab.browse.rawValue, systemImage: ContentView.Tab.browse.icon)
                 }
-                .tag(0)
+                .tag(ContentView.Tab.browse)
 
-            StudyPlaceholderView()
+            SettingsView()
                 .tabItem {
-                    Label("Study", systemImage: "rectangle.on.rectangle")
+                    Label(ContentView.Tab.settings.rawValue, systemImage: ContentView.Tab.settings.icon)
                 }
-                .tag(1)
-
-            StatsPlaceholderView()
-                .tabItem {
-                    Label("Stats", systemImage: "chart.bar")
-                }
-                .tag(2)
+                .tag(ContentView.Tab.settings)
         }
+        .tint(Color.adaptive(
+            light: AppTheme.Colors.Fallback.primaryLight,
+            dark: AppTheme.Colors.Fallback.primaryDark
+        ))
     }
 }
 
@@ -76,14 +109,42 @@ struct MainTabView: View {
 
 struct LoadingView: View {
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: AppTheme.Spacing.lg) {
             ProgressView()
                 .scaleEffect(1.5)
+                .tint(Color.adaptive(
+                    light: AppTheme.Colors.Fallback.primaryLight,
+                    dark: AppTheme.Colors.Fallback.primaryDark
+                ))
 
-            Text("Loading entries...")
-                .font(.headline)
-                .foregroundStyle(.secondary)
+            VStack(spacing: AppTheme.Spacing.xs) {
+                Text("JouzuLab")
+                    .font(AppTheme.Typography.title)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        )
+                    )
+
+                Text("Loading entries...")
+                    .font(AppTheme.Typography.subheadline)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                        )
+                    )
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            Color.adaptive(
+                light: AppTheme.Colors.Fallback.backgroundLight,
+                dark: AppTheme.Colors.Fallback.backgroundDark
+            )
+            .ignoresSafeArea()
+        )
     }
 }
 
@@ -94,68 +155,57 @@ struct ErrorView: View {
     let retryAction: () -> Void
 
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 50))
-                .foregroundStyle(.orange)
+        VStack(spacing: AppTheme.Spacing.lg) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 56))
+                .foregroundStyle(AppTheme.Colors.Fallback.warning)
 
-            Text("Import Failed")
-                .font(.title2)
-                .fontWeight(.semibold)
+            VStack(spacing: AppTheme.Spacing.xs) {
+                Text("Import Failed")
+                    .font(AppTheme.Typography.headline)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        )
+                    )
 
-            Text(message)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+                Text(message)
+                    .font(AppTheme.Typography.body)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                        )
+                    )
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+            }
 
-            Button("Retry") {
+            Button {
                 retryAction()
+            } label: {
+                Text("Retry")
+                    .font(AppTheme.Typography.subheadline)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, AppTheme.Spacing.xl)
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                    .background(Color.adaptive(
+                        light: AppTheme.Colors.Fallback.primaryLight,
+                        dark: AppTheme.Colors.Fallback.primaryDark
+                    ))
+                    .clipShape(Capsule())
             }
-            .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Retry importing data")
         }
-    }
-}
-
-// MARK: - Placeholder Views (Phase 2 & 3)
-
-struct StudyPlaceholderView: View {
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                Image(systemName: "rectangle.on.rectangle")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.secondary)
-
-                Text("Study Mode")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-
-                Text("Flashcards coming in Phase 2")
-                    .foregroundStyle(.secondary)
-            }
-            .navigationTitle("Study")
-        }
-    }
-}
-
-struct StatsPlaceholderView: View {
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                Image(systemName: "chart.bar")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.secondary)
-
-                Text("Statistics")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-
-                Text("Progress tracking coming in Phase 3")
-                    .foregroundStyle(.secondary)
-            }
-            .navigationTitle("Stats")
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            Color.adaptive(
+                light: AppTheme.Colors.Fallback.backgroundLight,
+                dark: AppTheme.Colors.Fallback.backgroundDark
+            )
+            .ignoresSafeArea()
+        )
     }
 }
 

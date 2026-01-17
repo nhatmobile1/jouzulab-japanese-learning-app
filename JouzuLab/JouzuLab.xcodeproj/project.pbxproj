@@ -7,16 +7,23 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1000001 /* JouzuLabApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001; };
-		A1000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000002; };
-		A1000003 /* Entry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003; };
-		A1000004 /* DataImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000004; };
-		A1000005 /* BrowseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000005; };
-		A1000006 /* EntryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000006; };
-		A1000007 /* EntryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000007; };
-		A1000008 /* EntryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000008; };
-		A1000009 /* japanese_data.json in Resources */ = {isa = PBXBuildFile; fileRef = A2000009; };
-		A1000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000010; };
+		A1000001 /* JouzuLabApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001 /* JouzuLabApp.swift */; };
+		A1000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000002 /* ContentView.swift */; };
+		A1000003 /* Entry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003 /* Entry.swift */; };
+		A1000004 /* DataImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000004 /* DataImportService.swift */; };
+		A1000005 /* BrowseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000005 /* BrowseView.swift */; };
+		A1000006 /* EntryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000006 /* EntryListView.swift */; };
+		A1000007 /* EntryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000007 /* EntryDetailView.swift */; };
+		A1000008 /* EntryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000008 /* EntryCard.swift */; };
+		A1000009 /* japanese_data.json in Resources */ = {isa = PBXBuildFile; fileRef = A2000009 /* japanese_data.json */; };
+		A1000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000010 /* Assets.xcassets */; };
+		FA3A940B2F1B8104004B9209 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94092F1B8104004B9209 /* Theme.swift */; };
+		FA3A94302F1B8C69004B9209 /* AppHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A942E2F1B8C69004B9209 /* AppHeader.swift */; };
+		FA3A94312F1B8C69004B9209 /* SideMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A942F2F1B8C69004B9209 /* SideMenu.swift */; };
+		FA3A943A2F1B8C87004B9209 /* StudyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94382F1B8C87004B9209 /* StudyView.swift */; };
+		FA3A943B2F1B8C87004B9209 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94342F1B8C87004B9209 /* SettingsView.swift */; };
+		FA3A943C2F1B8C87004B9209 /* ShadowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94362F1B8C87004B9209 /* ShadowView.swift */; };
+		FA3A943D2F1B8C87004B9209 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94322F1B8C87004B9209 /* DashboardView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +38,13 @@
 		A2000009 /* japanese_data.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = japanese_data.json; sourceTree = "<group>"; };
 		A2000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A3000001 /* JouzuLab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JouzuLab.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FA3A94092F1B8104004B9209 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		FA3A942E2F1B8C69004B9209 /* AppHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppHeader.swift; sourceTree = "<group>"; };
+		FA3A942F2F1B8C69004B9209 /* SideMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SideMenu.swift; sourceTree = "<group>"; };
+		FA3A94322F1B8C87004B9209 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		FA3A94342F1B8C87004B9209 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		FA3A94362F1B8C87004B9209 /* ShadowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShadowView.swift; sourceTree = "<group>"; };
+		FA3A94382F1B8C87004B9209 /* StudyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +69,7 @@
 		A5000002 /* JouzuLab */ = {
 			isa = PBXGroup;
 			children = (
+				FA3A940A2F1B8104004B9209 /* Theme */,
 				A2000001 /* JouzuLabApp.swift */,
 				A5000003 /* Models */,
 				A5000004 /* Services */,
@@ -83,6 +98,10 @@
 		A5000005 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				FA3A94332F1B8C87004B9209 /* Dashboard */,
+				FA3A94352F1B8C87004B9209 /* Settings */,
+				FA3A94372F1B8C87004B9209 /* Shadow */,
+				FA3A94392F1B8C87004B9209 /* Study */,
 				A2000002 /* ContentView.swift */,
 				A5000006 /* Browse */,
 				A5000007 /* Components */,
@@ -103,6 +122,8 @@
 		A5000007 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				FA3A942E2F1B8C69004B9209 /* AppHeader.swift */,
+				FA3A942F2F1B8C69004B9209 /* SideMenu.swift */,
 				A2000008 /* EntryCard.swift */,
 			);
 			path = Components;
@@ -123,6 +144,46 @@
 				A3000001 /* JouzuLab.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		FA3A940A2F1B8104004B9209 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				FA3A94092F1B8104004B9209 /* Theme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		FA3A94332F1B8C87004B9209 /* Dashboard */ = {
+			isa = PBXGroup;
+			children = (
+				FA3A94322F1B8C87004B9209 /* DashboardView.swift */,
+			);
+			path = Dashboard;
+			sourceTree = "<group>";
+		};
+		FA3A94352F1B8C87004B9209 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				FA3A94342F1B8C87004B9209 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		FA3A94372F1B8C87004B9209 /* Shadow */ = {
+			isa = PBXGroup;
+			children = (
+				FA3A94362F1B8C87004B9209 /* ShadowView.swift */,
+			);
+			path = Shadow;
+			sourceTree = "<group>";
+		};
+		FA3A94392F1B8C87004B9209 /* Study */ = {
+			isa = PBXGroup;
+			children = (
+				FA3A94382F1B8C87004B9209 /* StudyView.swift */,
+			);
+			path = Study;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -153,7 +214,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					A6000001 = {
 						CreatedOnToolsVersion = 15.0;
@@ -203,6 +264,13 @@
 				A1000006 /* EntryListView.swift in Sources */,
 				A1000007 /* EntryDetailView.swift in Sources */,
 				A1000008 /* EntryCard.swift in Sources */,
+				FA3A943A2F1B8C87004B9209 /* StudyView.swift in Sources */,
+				FA3A943B2F1B8C87004B9209 /* SettingsView.swift in Sources */,
+				FA3A943C2F1B8C87004B9209 /* ShadowView.swift in Sources */,
+				FA3A943D2F1B8C87004B9209 /* DashboardView.swift in Sources */,
+				FA3A940B2F1B8104004B9209 /* Theme.swift in Sources */,
+				FA3A94302F1B8C69004B9209 /* AppHeader.swift in Sources */,
+				FA3A94312F1B8C69004B9209 /* SideMenu.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -267,6 +335,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -323,6 +392,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -406,7 +476,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
 	};
 	rootObject = A9000001 /* Project object */;
 }
