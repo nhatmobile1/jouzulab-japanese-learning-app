@@ -1,4 +1,4 @@
-﻿日本語のレッスンノート
+日本語のレッスンノート
 
 
 陳 天日
@@ -193,7 +193,7 @@
 * 小籠包（しょうろんぽう）- xiao long bao
 * 点心（てんしん）- dum sum
 * 教室（きょうしつ）- classroom
-* 食堂（しょくどう) - cafeteria
+* 食堂（しょくどう）- cafeteria
 2023-03-27
 
 
@@ -4861,7 +4861,7 @@ Youtubeで音楽のフェスを見たり、かんこくのスープを作った�
 * 必要（ひつよう）じゃない - It's not necessary
    * 必要ではない - not necessary
 * 旦那（だんな）さん - husband
-* 心配（しんぱい）
+* 心配（しんぱい）- worry; concern
 * 西京区（にしきょうく）
 * 京都市（きょうとし）
 * 方言（ほうげん）- dialect
@@ -9358,7 +9358,7 @@ Shopping
 * 快適（かいてき）な - comfortable
 * 寝袋（ねぶくろ）- sleeping bag
 * 固（かた）い - hard; solid; tough
-* 地面（じめん) - ground
+* 地面（じめん）- ground
 * 地面は固くて冷（つめ）たいです
 * 床（ゆか）- floor
 * 昼寝（ひるね）をする - to take nap
@@ -12367,7 +12367,7 @@ Shopping
 2025-09-11
 
 
-* 濃い（こい）- dark; thick （coffee, color, etc.)
+* 濃い（こい）- dark; thick (coffee, color, etc.)
 * 気づく（きづく）- to notice
    * きづかなかった
 * まだ、いたかったら、また いしゃにいきます
@@ -13434,7 +13434,7 @@ Shopping
 * やめて ほかのしごとを します
 * せきにんがある
 * せいふの しごと
-* 戻る（もどる - to return
+* 戻る（もどる）- to return
 * えいきょう が ある - influenced
 * 2せん の しごとに えいきょうが ある
 * マイノリティ
