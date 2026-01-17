@@ -56,6 +56,26 @@ struct SettingsView: View {
                     Text("App")
                 }
 
+                // Decks Section
+                Section {
+                    NavigationLink(destination: DecksView()) {
+                        HStack {
+                            Image(systemName: "square.stack.3d.up")
+                                .foregroundStyle(
+                                    Color.adaptive(
+                                        light: AppTheme.Colors.Fallback.primaryLight,
+                                        dark: AppTheme.Colors.Fallback.primaryDark
+                                    )
+                                )
+                            Text("Manage Decks")
+                        }
+                    }
+                } header: {
+                    Text("Decks")
+                } footer: {
+                    Text("Import and manage vocabulary deck files")
+                }
+
                 // Data Management Section
                 Section {
                     Button(role: .destructive) {

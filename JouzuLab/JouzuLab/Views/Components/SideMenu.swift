@@ -10,6 +10,7 @@ struct SideMenu: View {
         case shadow = "Shadow"
         case browse = "Browse"
         case settings = "Settings"
+        case decks = "Decks"
         case favorites = "Favorites"
         case stats = "Statistics"
 
@@ -20,6 +21,7 @@ struct SideMenu: View {
             case .shadow: return "waveform"
             case .browse: return "book.fill"
             case .settings: return "gearshape.fill"
+            case .decks: return "square.stack.3d.up"
             case .favorites: return "star.fill"
             case .stats: return "chart.bar.fill"
             }

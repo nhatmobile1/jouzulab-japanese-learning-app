@@ -28,6 +28,7 @@ class Entry {
     var isSubEntry: Bool
     var sourceLine: Int
     var lessonFrequency: Int
+    var lesson: String?  // For textbook lesson tracking (e.g., "会G", "L1")
 
     // MARK: Computed
     var isComplete: Bool {
@@ -63,7 +64,8 @@ class Entry {
         contextNote: String? = nil,
         isSubEntry: Bool = false,
         sourceLine: Int = 0,
-        lessonFrequency: Int = 1
+        lessonFrequency: Int = 1,
+        lesson: String? = nil
     ) {
         self.id = id
         self.japanese = japanese
@@ -78,6 +80,7 @@ class Entry {
         self.isSubEntry = isSubEntry
         self.sourceLine = sourceLine
         self.lessonFrequency = lessonFrequency
+        self.lesson = lesson
 
         // Default progress values
         self.masteryLevel = .new
@@ -122,22 +125,26 @@ struct Metadata: Codable {
 }
 
 struct EntryJSON: Codable {
-    let id: String
+    // Required field
     let japanese: String
+
+    // Optional fields (with defaults for simplified deck format)
+    let id: String?
     let reading: String?
     let english: String?
-    let entryType: String
+    let entryType: String?
     let lessonDate: String?
-    let tags: [String]
-    let grammarPatterns: [String]
+    let tags: [String]?
+    let grammarPatterns: [String]?
     let jlptLevel: String?
     let contextNote: String?
-    let isSubEntry: Bool
-    let sourceLine: Int
+    let isSubEntry: Bool?
+    let sourceLine: Int?
     let lessonFrequency: Int?
+    let lesson: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, japanese, reading, english, tags
+        case id, japanese, reading, english, tags, lesson
         case entryType = "entry_type"
         case lessonDate = "lesson_date"
         case grammarPatterns = "grammar_patterns"
@@ -148,22 +155,43 @@ struct EntryJSON: Codable {
         case lessonFrequency = "lesson_frequency"
     }
 
-    func toEntry() -> Entry {
-        Entry(
-            id: id,
+    func toEntry(deckId: String? = nil, index: Int = 0) -> Entry {
+        // Auto-generate ID if not provided
+        let entryId = id ?? "\(deckId ?? "deck")_\(String(format: "%05d", index))"
+
+        // Auto-detect entry type if not provided
+        let type = entryType ?? detectEntryType(japanese)
+
+        return Entry(
+            id: entryId,
             japanese: japanese,
             reading: reading,
             english: english,
-            entryType: entryType,
+            entryType: type,
             lessonDate: lessonDate,
-            tags: tags,
-            grammarPatterns: grammarPatterns,
+            tags: tags ?? [],
+            grammarPatterns: grammarPatterns ?? [],
             jlptLevel: jlptLevel,
             contextNote: contextNote,
-            isSubEntry: isSubEntry,
-            sourceLine: sourceLine,
-            lessonFrequency: lessonFrequency ?? 1
+            isSubEntry: isSubEntry ?? false,
+            sourceLine: sourceLine ?? 0,
+            lessonFrequency: lessonFrequency ?? 1,
+            lesson: lesson
         )
+    }
+
+    /// Detect entry type based on content
+    private func detectEntryType(_ text: String) -> String {
+        // If it contains a period or question mark, likely a sentence
+        if text.contains("。") || text.contains("？") || text.contains("?") {
+            return "sentence"
+        }
+        // If it contains spaces or multiple particles, likely a phrase
+        if text.contains(" ") || text.contains("　") || text.count > 10 {
+            return "phrase"
+        }
+        // Default to vocab
+        return "vocab"
     }
 }
 

@@ -24,6 +24,19 @@
 		FA3A943B2F1B8C87004B9209 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94342F1B8C87004B9209 /* SettingsView.swift */; };
 		FA3A943C2F1B8C87004B9209 /* ShadowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94362F1B8C87004B9209 /* ShadowView.swift */; };
 		FA3A943D2F1B8C87004B9209 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94322F1B8C87004B9209 /* DashboardView.swift */; };
+		FA3A943F2F1C13F7004B9209 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A943E2F1C13F7004B9209 /* Deck.swift */; };
+		FA3A94432F1C14A0004B9209 /* AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94402F1C14A0004B9209 /* AudioService.swift */; };
+		FA3A94442F1C14A0004B9209 /* DeckService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94412F1C14A0004B9209 /* DeckService.swift */; };
+		FA3A94452F1C14A0004B9209 /* SRSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94422F1C14A0004B9209 /* SRSService.swift */; };
+		FA3A94492F1C14B2004B9209 /* DeckDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94462F1C14B2004B9209 /* DeckDetailView.swift */; };
+		FA3A944A2F1C14B2004B9209 /* DecksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94472F1C14B2004B9209 /* DecksView.swift */; };
+		FA3A94512F1C16A6004B9209 /* BrowseFilters.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A944F2F1C16A6004B9209 /* BrowseFilters.swift */; };
+		FA3A94522F1C16A6004B9209 /* FilterBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94502F1C16A6004B9209 /* FilterBarView.swift */; };
+		FA3A94582F1C16E4004B9209 /* FlashcardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94542F1C16E4004B9209 /* FlashcardView.swift */; };
+		FA3A94592F1C16E4004B9209 /* GradeButtonsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94552F1C16E4004B9209 /* GradeButtonsView.swift */; };
+		FA3A945A2F1C16E4004B9209 /* SessionConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94562F1C16E4004B9209 /* SessionConfigView.swift */; };
+		FA3A945B2F1C16E4004B9209 /* SessionSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94572F1C16E4004B9209 /* SessionSummaryView.swift */; };
+		FA3A945C2F1C16E4004B9209 /* FlashcardSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94532F1C16E4004B9209 /* FlashcardSessionView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +58,19 @@
 		FA3A94342F1B8C87004B9209 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		FA3A94362F1B8C87004B9209 /* ShadowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShadowView.swift; sourceTree = "<group>"; };
 		FA3A94382F1B8C87004B9209 /* StudyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyView.swift; sourceTree = "<group>"; };
+		FA3A943E2F1C13F7004B9209 /* Deck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Deck.swift; sourceTree = "<group>"; };
+		FA3A94402F1C14A0004B9209 /* AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioService.swift; sourceTree = "<group>"; };
+		FA3A94412F1C14A0004B9209 /* DeckService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckService.swift; sourceTree = "<group>"; };
+		FA3A94422F1C14A0004B9209 /* SRSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SRSService.swift; sourceTree = "<group>"; };
+		FA3A94462F1C14B2004B9209 /* DeckDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckDetailView.swift; sourceTree = "<group>"; };
+		FA3A94472F1C14B2004B9209 /* DecksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecksView.swift; sourceTree = "<group>"; };
+		FA3A944F2F1C16A6004B9209 /* BrowseFilters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseFilters.swift; sourceTree = "<group>"; };
+		FA3A94502F1C16A6004B9209 /* FilterBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterBarView.swift; sourceTree = "<group>"; };
+		FA3A94532F1C16E4004B9209 /* FlashcardSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardSessionView.swift; sourceTree = "<group>"; };
+		FA3A94542F1C16E4004B9209 /* FlashcardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashcardView.swift; sourceTree = "<group>"; };
+		FA3A94552F1C16E4004B9209 /* GradeButtonsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradeButtonsView.swift; sourceTree = "<group>"; };
+		FA3A94562F1C16E4004B9209 /* SessionConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionConfigView.swift; sourceTree = "<group>"; };
+		FA3A94572F1C16E4004B9209 /* SessionSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSummaryView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -82,6 +108,7 @@
 		A5000003 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				FA3A943E2F1C13F7004B9209 /* Deck.swift */,
 				A2000003 /* Entry.swift */,
 			);
 			path = Models;
@@ -90,6 +117,9 @@
 		A5000004 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				FA3A94402F1C14A0004B9209 /* AudioService.swift */,
+				FA3A94412F1C14A0004B9209 /* DeckService.swift */,
+				FA3A94422F1C14A0004B9209 /* SRSService.swift */,
 				A2000004 /* DataImportService.swift */,
 			);
 			path = Services;
@@ -98,6 +128,7 @@
 		A5000005 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				FA3A94482F1C14B2004B9209 /* Decks */,
 				FA3A94332F1B8C87004B9209 /* Dashboard */,
 				FA3A94352F1B8C87004B9209 /* Settings */,
 				FA3A94372F1B8C87004B9209 /* Shadow */,
@@ -112,6 +143,8 @@
 		A5000006 /* Browse */ = {
 			isa = PBXGroup;
 			children = (
+				FA3A944F2F1C16A6004B9209 /* BrowseFilters.swift */,
+				FA3A94502F1C16A6004B9209 /* FilterBarView.swift */,
 				A2000005 /* BrowseView.swift */,
 				A2000006 /* EntryListView.swift */,
 				A2000007 /* EntryDetailView.swift */,
@@ -182,8 +215,22 @@
 			isa = PBXGroup;
 			children = (
 				FA3A94382F1B8C87004B9209 /* StudyView.swift */,
+				FA3A94532F1C16E4004B9209 /* FlashcardSessionView.swift */,
+				FA3A94542F1C16E4004B9209 /* FlashcardView.swift */,
+				FA3A94552F1C16E4004B9209 /* GradeButtonsView.swift */,
+				FA3A94562F1C16E4004B9209 /* SessionConfigView.swift */,
+				FA3A94572F1C16E4004B9209 /* SessionSummaryView.swift */,
 			);
 			path = Study;
+			sourceTree = "<group>";
+		};
+		FA3A94482F1C14B2004B9209 /* Decks */ = {
+			isa = PBXGroup;
+			children = (
+				FA3A94462F1C14B2004B9209 /* DeckDetailView.swift */,
+				FA3A94472F1C14B2004B9209 /* DecksView.swift */,
+			);
+			path = Decks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -261,13 +308,26 @@
 				A1000003 /* Entry.swift in Sources */,
 				A1000004 /* DataImportService.swift in Sources */,
 				A1000005 /* BrowseView.swift in Sources */,
+				FA3A94512F1C16A6004B9209 /* BrowseFilters.swift in Sources */,
+				FA3A94522F1C16A6004B9209 /* FilterBarView.swift in Sources */,
 				A1000006 /* EntryListView.swift in Sources */,
 				A1000007 /* EntryDetailView.swift in Sources */,
 				A1000008 /* EntryCard.swift in Sources */,
+				FA3A94582F1C16E4004B9209 /* FlashcardView.swift in Sources */,
+				FA3A94592F1C16E4004B9209 /* GradeButtonsView.swift in Sources */,
+				FA3A945A2F1C16E4004B9209 /* SessionConfigView.swift in Sources */,
+				FA3A945B2F1C16E4004B9209 /* SessionSummaryView.swift in Sources */,
+				FA3A945C2F1C16E4004B9209 /* FlashcardSessionView.swift in Sources */,
+				FA3A94432F1C14A0004B9209 /* AudioService.swift in Sources */,
+				FA3A94442F1C14A0004B9209 /* DeckService.swift in Sources */,
+				FA3A94452F1C14A0004B9209 /* SRSService.swift in Sources */,
 				FA3A943A2F1B8C87004B9209 /* StudyView.swift in Sources */,
 				FA3A943B2F1B8C87004B9209 /* SettingsView.swift in Sources */,
 				FA3A943C2F1B8C87004B9209 /* ShadowView.swift in Sources */,
 				FA3A943D2F1B8C87004B9209 /* DashboardView.swift in Sources */,
+				FA3A94492F1C14B2004B9209 /* DeckDetailView.swift in Sources */,
+				FA3A944A2F1C14B2004B9209 /* DecksView.swift in Sources */,
+				FA3A943F2F1C13F7004B9209 /* Deck.swift in Sources */,
 				FA3A940B2F1B8104004B9209 /* Theme.swift in Sources */,
 				FA3A94302F1B8C69004B9209 /* AppHeader.swift in Sources */,
 				FA3A94312F1B8C69004B9209 /* SideMenu.swift in Sources */,

@@ -65,9 +65,9 @@ class DataImportService {
         var skipped = 0
 
         // Batch insert - only insert entries that don't exist
-        for entryJSON in japaneseData.entries {
-            if !existingIDs.contains(entryJSON.id) {
-                let entry = entryJSON.toEntry()
+        for (index, entryJSON) in japaneseData.entries.enumerated() {
+            let entry = entryJSON.toEntry(index: index)
+            if !existingIDs.contains(entry.id) {
                 modelContext.insert(entry)
                 imported += 1
             } else {

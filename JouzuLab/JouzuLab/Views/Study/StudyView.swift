@@ -5,6 +5,13 @@ struct StudyView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var allEntries: [Entry]
     @State private var showSideMenu = false
+    @State private var showSessionConfig = false
+    @State private var showFlashcardSession = false
+    @State private var showSessionSummary = false
+    @State private var sessionQueue: [Entry] = []
+    @State private var lastSessionStats: SessionStats?
+
+    private let srsService = SRSService.shared
 
     private var reviewDueCount: Int {
         let now = Date()
@@ -15,7 +22,11 @@ struct StudyView: View {
     }
 
     private var newCount: Int {
-        allEntries.filter { $0.masteryLevel == .new }.count
+        allEntries.filter { $0.masteryLevel == .new && $0.reviewCount == 0 }.count
+    }
+
+    private var hasCardsToStudy: Bool {
+        reviewDueCount > 0 || newCount > 0
     }
 
     var body: some View {
@@ -69,7 +80,7 @@ struct StudyView: View {
                                     )
                                 )
 
-                            Text("Coming in Phase 2")
+                            Text("Practice with spaced repetition")
                                 .font(AppTheme.Typography.subheadline)
                                 .foregroundStyle(
                                     Color.adaptive(
@@ -78,36 +89,6 @@ struct StudyView: View {
                                     )
                                 )
                         }
-
-                        // Description
-                        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                            FeatureRow(
-                                icon: "rectangle.portrait.on.rectangle.portrait",
-                                title: "Flip Cards",
-                                description: "Tap to reveal readings and translations"
-                            )
-
-                            FeatureRow(
-                                icon: "brain.head.profile",
-                                title: "Spaced Repetition",
-                                description: "Smart scheduling based on your performance"
-                            )
-
-                            FeatureRow(
-                                icon: "hand.thumbsup.fill",
-                                title: "Self-Grading",
-                                description: "Rate as Easy, Good, Hard, or Again"
-                            )
-
-                            FeatureRow(
-                                icon: "calendar.badge.clock",
-                                title: "Daily Reviews",
-                                description: "Keep your knowledge fresh"
-                            )
-                        }
-                        .padding(AppTheme.Spacing.lg)
-                        .cardStyle()
-                        .padding(.horizontal, AppTheme.Spacing.md)
 
                         // Stats preview
                         HStack(spacing: AppTheme.Spacing.lg) {
@@ -120,7 +101,7 @@ struct StudyView: View {
                                             dark: AppTheme.Colors.Fallback.primaryDark
                                         )
                                     )
-                                Text("New entries")
+                                Text("New")
                                     .font(AppTheme.Typography.caption)
                                     .foregroundStyle(
                                         Color.adaptive(
@@ -129,6 +110,16 @@ struct StudyView: View {
                                         )
                                     )
                             }
+                            .frame(maxWidth: .infinity)
+
+                            Rectangle()
+                                .fill(
+                                    Color.adaptive(
+                                        light: AppTheme.Colors.Fallback.textTertiaryLight,
+                                        dark: AppTheme.Colors.Fallback.textTertiaryDark
+                                    ).opacity(0.3)
+                                )
+                                .frame(width: 1, height: 40)
 
                             VStack {
                                 Text("\(reviewDueCount)")
@@ -139,7 +130,7 @@ struct StudyView: View {
                                             dark: AppTheme.Colors.Fallback.accentDark
                                         )
                                     )
-                                Text("Due for review")
+                                Text("Due")
                                     .font(AppTheme.Typography.caption)
                                     .foregroundStyle(
                                         Color.adaptive(
@@ -148,9 +139,65 @@ struct StudyView: View {
                                         )
                                     )
                             }
+                            .frame(maxWidth: .infinity)
                         }
                         .padding(AppTheme.Spacing.lg)
                         .cardStyle()
+                        .padding(.horizontal, AppTheme.Spacing.md)
+
+                        // Start Study Button
+                        Button {
+                            showSessionConfig = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "play.fill")
+                                Text("Start Study Session")
+                            }
+                            .font(AppTheme.Typography.headline)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, AppTheme.Spacing.md)
+                            .background(
+                                Color.adaptive(
+                                    light: AppTheme.Colors.Fallback.primaryLight,
+                                    dark: AppTheme.Colors.Fallback.primaryDark
+                                )
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
+                        }
+                        .padding(.horizontal, AppTheme.Spacing.md)
+                        .disabled(!hasCardsToStudy)
+                        .opacity(hasCardsToStudy ? 1 : 0.5)
+
+                        // Features list
+                        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                            FeatureRow(
+                                icon: "rectangle.portrait.on.rectangle.portrait",
+                                title: "Flip Cards",
+                                description: "Tap to reveal readings and translations"
+                            )
+
+                            FeatureRow(
+                                icon: "speaker.wave.2.fill",
+                                title: "Audio Pronunciation",
+                                description: "Listen to native Japanese pronunciation"
+                            )
+
+                            FeatureRow(
+                                icon: "brain.head.profile",
+                                title: "Spaced Repetition",
+                                description: "SM-2 algorithm schedules optimal reviews"
+                            )
+
+                            FeatureRow(
+                                icon: "hand.thumbsup.fill",
+                                title: "Self-Grading",
+                                description: "Rate as Easy, Good, Hard, or Again"
+                            )
+                        }
+                        .padding(AppTheme.Spacing.lg)
+                        .cardStyle()
+                        .padding(.horizontal, AppTheme.Spacing.md)
 
                         Spacer()
                     }
@@ -168,6 +215,61 @@ struct StudyView: View {
             SideMenu(isPresented: $showSideMenu) { item in
                 print("Navigate to: \(item.rawValue)")
             }
+        }
+        .sheet(isPresented: $showSessionConfig) {
+            SessionConfigView { newCardLimit, jlptFilter, deck in
+                startSession(newCardLimit: newCardLimit, jlptFilter: jlptFilter, deck: deck)
+            }
+        }
+        .fullScreenCover(isPresented: $showFlashcardSession) {
+            FlashcardSessionView(initialQueue: sessionQueue) { stats in
+                lastSessionStats = stats
+                showFlashcardSession = false
+                showSessionSummary = true
+            }
+        }
+        .sheet(isPresented: $showSessionSummary) {
+            if let stats = lastSessionStats {
+                SessionSummaryView(
+                    stats: stats,
+                    onContinue: hasCardsToStudy ? {
+                        showSessionSummary = false
+                        showSessionConfig = true
+                    } : nil,
+                    onFinish: {
+                        showSessionSummary = false
+                    }
+                )
+            }
+        }
+    }
+
+    // MARK: - Session Management
+
+    private func startSession(newCardLimit: Int, jlptFilter: String?, deck: Deck?) {
+        var entriesToStudy = allEntries
+
+        // Apply deck filter if selected
+        if let deck = deck {
+            let deckEntryIDs = Set(deck.entryIDs)
+            entriesToStudy = entriesToStudy.filter { deckEntryIDs.contains($0.id) }
+        }
+
+        // Apply JLPT filter if selected
+        if let jlpt = jlptFilter {
+            entriesToStudy = entriesToStudy.filter { $0.jlptLevel == jlpt }
+        }
+
+        // Build study queue
+        sessionQueue = srsService.buildStudyQueue(
+            from: entriesToStudy,
+            newCardLimit: newCardLimit
+        )
+
+        showSessionConfig = false
+
+        if !sessionQueue.isEmpty {
+            showFlashcardSession = true
         }
     }
 }
