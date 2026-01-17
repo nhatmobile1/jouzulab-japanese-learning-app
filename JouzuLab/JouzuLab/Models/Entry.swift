@@ -27,6 +27,7 @@ class Entry {
     var contextNote: String?
     var isSubEntry: Bool
     var sourceLine: Int
+    var lessonFrequency: Int
 
     // MARK: Computed
     var isComplete: Bool {
@@ -42,6 +43,11 @@ class Entry {
     var correctCount: Int
     var isFavorite: Bool
 
+    // MARK: Computed - High frequency indicator
+    var isHighFrequency: Bool {
+        lessonFrequency >= 3
+    }
+
     // MARK: Init
 
     init(
@@ -56,7 +62,8 @@ class Entry {
         jlptLevel: String? = nil,
         contextNote: String? = nil,
         isSubEntry: Bool = false,
-        sourceLine: Int = 0
+        sourceLine: Int = 0,
+        lessonFrequency: Int = 1
     ) {
         self.id = id
         self.japanese = japanese
@@ -70,6 +77,7 @@ class Entry {
         self.contextNote = contextNote
         self.isSubEntry = isSubEntry
         self.sourceLine = sourceLine
+        self.lessonFrequency = lessonFrequency
 
         // Default progress values
         self.masteryLevel = .new
@@ -126,6 +134,7 @@ struct EntryJSON: Codable {
     let contextNote: String?
     let isSubEntry: Bool
     let sourceLine: Int
+    let lessonFrequency: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, japanese, reading, english, tags
@@ -136,6 +145,7 @@ struct EntryJSON: Codable {
         case contextNote = "context_note"
         case isSubEntry = "is_sub_entry"
         case sourceLine = "source_line"
+        case lessonFrequency = "lesson_frequency"
     }
 
     func toEntry() -> Entry {
@@ -151,7 +161,8 @@ struct EntryJSON: Codable {
             jlptLevel: jlptLevel,
             contextNote: contextNote,
             isSubEntry: isSubEntry,
-            sourceLine: sourceLine
+            sourceLine: sourceLine,
+            lessonFrequency: lessonFrequency ?? 1
         )
     }
 }

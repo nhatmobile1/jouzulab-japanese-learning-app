@@ -428,10 +428,13 @@ class JapaneseNotesParser:
 
         for japanese, group in grouped.items():
             if len(group) == 1:
+                # Single occurrence - set frequency to 1
+                group[0]['lesson_frequency'] = 1
                 deduplicated.append(group[0])
             else:
-                # Merge multiple entries
+                # Merge multiple entries - frequency = number of occurrences
                 merged = self.merge_entries(group)
+                merged['lesson_frequency'] = len(group)
                 deduplicated.append(merged)
                 duplicates_merged += len(group) - 1
 
@@ -495,9 +498,12 @@ class JapaneseNotesParser:
 
     def create_output(self, entries, stats, output_path):
         """Create the final JSON output"""
+        # Calculate frequency stats
+        high_freq_count = sum(1 for e in entries if e.get('lesson_frequency', 1) >= 3)
+
         data = {
             'metadata': {
-                'version': '2.0',
+                'version': '2.1',
                 'created_date': datetime.now().strftime('%Y-%m-%d'),
                 'total_entries': len(entries),
                 'entries_with_reading': stats['with_reading'],
@@ -505,6 +511,7 @@ class JapaneseNotesParser:
                 'entries_missing_reading': stats['entries'] - stats['with_reading'],
                 'entries_missing_english': stats['entries'] - stats['with_english'],
                 'lesson_count': len(stats['lesson_dates']),
+                'high_frequency_entries': high_freq_count,
                 'source': 'Parsed from 日本語のレッスンノート.txt'
             },
             'entries': entries
@@ -545,6 +552,13 @@ def main():
     print(f"With reading:  {stats['with_reading']:,} ({100*stats['with_reading']/stats['entries']:.1f}%)")
     print(f"With English:  {stats['with_english']:,} ({100*stats['with_english']/stats['entries']:.1f}%)")
     print(f"Lesson dates:  {len(stats['lesson_dates'])}")
+
+    # Frequency stats
+    freq_3plus = sum(1 for e in entries if e.get('lesson_frequency', 1) >= 3)
+    freq_5plus = sum(1 for e in entries if e.get('lesson_frequency', 1) >= 5)
+    print(f"\nHigh Frequency Entries:")
+    print(f"  3+ occurrences: {freq_3plus:,}")
+    print(f"  5+ occurrences: {freq_5plus:,}")
 
     print("\nEntry Types:")
     for entry_type, count in sorted(stats['entry_types'].items(), key=lambda x: -x[1]):
