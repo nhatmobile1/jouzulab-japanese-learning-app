@@ -7,7 +7,6 @@ import SwiftData
 
 enum SortOption: String, CaseIterable, Identifiable {
     case dateAdded = "Date Added"
-    case japanese = "Japanese (A-Z)"
     case reading = "Reading (あ-ん)"
     case jlptLevel = "JLPT Level"
     case lesson = "Lesson"
@@ -18,7 +17,6 @@ enum SortOption: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .dateAdded: return "calendar"
-        case .japanese: return "character.ja"
         case .reading: return "textformat.abc"
         case .jlptLevel: return "graduationcap"
         case .lesson: return "book"
@@ -292,11 +290,6 @@ class FilterDataProvider {
                 let date1 = e1.lessonDate ?? ""
                 let date2 = e2.lessonDate ?? ""
                 return ascending ? date1 < date2 : date1 > date2
-            }
-
-        case .japanese:
-            sorted = entries.sorted { e1, e2 in
-                ascending ? e1.japanese < e2.japanese : e1.japanese > e2.japanese
             }
 
         case .reading:

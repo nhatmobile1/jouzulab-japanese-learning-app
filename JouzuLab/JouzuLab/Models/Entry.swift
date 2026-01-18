@@ -29,6 +29,7 @@ class Entry {
     var sourceLine: Int
     var lessonFrequency: Int
     var lesson: String?  // For textbook lesson tracking (e.g., "会G", "L1")
+    var deckId: String?  // Track which deck this entry belongs to
 
     // MARK: Computed
     var isComplete: Bool {
@@ -65,7 +66,8 @@ class Entry {
         isSubEntry: Bool = false,
         sourceLine: Int = 0,
         lessonFrequency: Int = 1,
-        lesson: String? = nil
+        lesson: String? = nil,
+        deckId: String? = nil
     ) {
         self.id = id
         self.japanese = japanese
@@ -81,6 +83,7 @@ class Entry {
         self.sourceLine = sourceLine
         self.lessonFrequency = lessonFrequency
         self.lesson = lesson
+        self.deckId = deckId
 
         // Default progress values
         self.masteryLevel = .new
@@ -176,7 +179,8 @@ struct EntryJSON: Codable {
             isSubEntry: isSubEntry ?? false,
             sourceLine: sourceLine ?? 0,
             lessonFrequency: lessonFrequency ?? 1,
-            lesson: lesson
+            lesson: lesson,
+            deckId: deckId
         )
     }
 

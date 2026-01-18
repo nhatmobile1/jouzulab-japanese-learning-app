@@ -9,6 +9,8 @@ struct DeckDetailView: View {
 
     @State private var stats: DeckStats?
     @State private var entries: [Entry] = []
+    @State private var lessonGroups: [(lesson: String, entries: [Entry])] = []
+    @State private var expandedLessons: Set<String> = []
     @State private var showStudySession = false
     @State private var showDeleteConfirmation = false
     @State private var sessionQueue: [Entry] = []
@@ -104,7 +106,7 @@ struct DeckDetailView: View {
                 .disabled(entries.isEmpty)
                 .opacity(entries.isEmpty ? 0.5 : 1)
 
-                // Entries preview
+                // Entries grouped by lesson
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
                     HStack {
                         Text("Entries")
@@ -128,22 +130,43 @@ struct DeckDetailView: View {
                             )
                     }
 
-                    // Show first few entries
-                    ForEach(entries.prefix(10)) { entry in
-                        DeckEntryRow(entry: entry)
-                    }
+                    // Lesson groups
+                    if lessonGroups.isEmpty {
+                        // Flat list if no lesson grouping
+                        ForEach(entries.prefix(10)) { entry in
+                            DeckEntryRow(entry: entry)
+                        }
 
-                    if entries.count > 10 {
-                        Text("+ \(entries.count - 10) more entries")
-                            .font(AppTheme.Typography.caption)
-                            .foregroundStyle(
-                                Color.adaptive(
-                                    light: AppTheme.Colors.Fallback.textTertiaryLight,
-                                    dark: AppTheme.Colors.Fallback.textTertiaryDark
+                        if entries.count > 10 {
+                            Text("+ \(entries.count - 10) more entries")
+                                .font(AppTheme.Typography.caption)
+                                .foregroundStyle(
+                                    Color.adaptive(
+                                        light: AppTheme.Colors.Fallback.textTertiaryLight,
+                                        dark: AppTheme.Colors.Fallback.textTertiaryDark
+                                    )
                                 )
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, AppTheme.Spacing.xs)
+                        }
+                    } else {
+                        // Grouped by lesson with collapsible sections
+                        ForEach(lessonGroups, id: \.lesson) { group in
+                            LessonGroupSection(
+                                lesson: group.lesson,
+                                entries: group.entries,
+                                isExpanded: expandedLessons.contains(group.lesson),
+                                onToggle: {
+                                    withAnimation(AppTheme.Animation.smooth) {
+                                        if expandedLessons.contains(group.lesson) {
+                                            expandedLessons.remove(group.lesson)
+                                        } else {
+                                            expandedLessons.insert(group.lesson)
+                                        }
+                                    }
+                                }
                             )
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, AppTheme.Spacing.xs)
+                        }
                     }
                 }
                 .padding(AppTheme.Spacing.lg)
@@ -202,6 +225,7 @@ struct DeckDetailView: View {
         let service = DeckService(modelContext: modelContext)
         do {
             entries = try service.getEntries(for: deck)
+            lessonGroups = try service.getEntriesGroupedByLesson(for: deck)
             stats = try service.getStats(for: deck)
         } catch {
             print("Failed to load deck data: \(error)")
@@ -319,43 +343,220 @@ struct StatBadge: View {
     }
 }
 
+// MARK: - Lesson Group Section
+
+struct LessonGroupSection: View {
+    let lesson: String
+    let entries: [Entry]
+    let isExpanded: Bool
+    let onToggle: () -> Void
+    var maxEntriesWhenExpanded: Int = 50  // Limit entries shown for large groups
+
+    private var masteredCount: Int {
+        entries.filter { $0.masteryLevel == .mastered }.count
+    }
+
+    private var progressPercentage: Double {
+        guard entries.count > 0 else { return 0 }
+        return Double(masteredCount) / Double(entries.count)
+    }
+
+    private var displayEntries: [Entry] {
+        if entries.count > maxEntriesWhenExpanded {
+            return Array(entries.prefix(maxEntriesWhenExpanded))
+        }
+        return entries
+    }
+
+    private var hasMoreEntries: Bool {
+        entries.count > maxEntriesWhenExpanded
+    }
+
+    private var entryTypeSummary: String {
+        let vocabCount = entries.filter { $0.entryType == "vocab" }.count
+        let phraseCount = entries.filter { $0.entryType == "phrase" }.count
+        let sentenceCount = entries.filter { $0.entryType == "sentence" }.count
+
+        var parts: [String] = []
+        if vocabCount > 0 { parts.append("\(vocabCount) vocab") }
+        if phraseCount > 0 { parts.append("\(phraseCount) phrase") }
+        if sentenceCount > 0 { parts.append("\(sentenceCount) sentence") }
+
+        return parts.joined(separator: ", ")
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header (tappable)
+            Button(action: onToggle) {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    // Chevron
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textTertiaryLight,
+                                dark: AppTheme.Colors.Fallback.textTertiaryDark
+                            )
+                        )
+                        .frame(width: 16)
+
+                    // Lesson info
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(lesson)
+                            .font(AppTheme.Typography.headline)
+                            .foregroundStyle(
+                                Color.adaptive(
+                                    light: AppTheme.Colors.Fallback.textPrimaryLight,
+                                    dark: AppTheme.Colors.Fallback.textPrimaryDark
+                                )
+                            )
+
+                        // Entry type summary (shown when collapsed)
+                        if !isExpanded {
+                            Text(entryTypeSummary)
+                                .font(AppTheme.Typography.caption)
+                                .foregroundStyle(
+                                    Color.adaptive(
+                                        light: AppTheme.Colors.Fallback.textTertiaryLight,
+                                        dark: AppTheme.Colors.Fallback.textTertiaryDark
+                                    )
+                                )
+                        }
+                    }
+
+                    Spacer()
+
+                    // Progress indicator
+                    HStack(spacing: AppTheme.Spacing.xs) {
+                        // Progress bar
+                        ProgressView(value: progressPercentage)
+                            .frame(width: 50)
+                            .tint(
+                                Color.adaptive(
+                                    light: AppTheme.Colors.Fallback.primaryLight,
+                                    dark: AppTheme.Colors.Fallback.primaryDark
+                                )
+                            )
+
+                        // Count
+                        Text("\(masteredCount)/\(entries.count)")
+                            .font(AppTheme.Typography.caption)
+                            .foregroundStyle(
+                                Color.adaptive(
+                                    light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                    dark: AppTheme.Colors.Fallback.textSecondaryDark
+                                )
+                            )
+                            .frame(width: 50, alignment: .trailing)
+                    }
+                }
+                .padding(.vertical, AppTheme.Spacing.sm)
+            }
+            .buttonStyle(.plain)
+
+            // Expanded entries
+            if isExpanded {
+                VStack(spacing: 0) {
+                    ForEach(displayEntries) { entry in
+                        DeckEntryRow(entry: entry)
+                            .padding(.leading, AppTheme.Spacing.lg)
+                    }
+
+                    // Show "more" indicator if truncated
+                    if hasMoreEntries {
+                        HStack {
+                            Spacer()
+                            Text("+ \(entries.count - maxEntriesWhenExpanded) more entries")
+                                .font(AppTheme.Typography.caption)
+                                .foregroundStyle(
+                                    Color.adaptive(
+                                        light: AppTheme.Colors.Fallback.primaryLight,
+                                        dark: AppTheme.Colors.Fallback.primaryDark
+                                    )
+                                )
+                            Spacer()
+                        }
+                        .padding(.vertical, AppTheme.Spacing.sm)
+                        .padding(.leading, AppTheme.Spacing.lg)
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            // Divider
+            Rectangle()
+                .fill(
+                    Color.adaptive(
+                        light: AppTheme.Colors.Fallback.textTertiaryLight,
+                        dark: AppTheme.Colors.Fallback.textTertiaryDark
+                    ).opacity(0.2)
+                )
+                .frame(height: 1)
+        }
+    }
+}
+
 // MARK: - Entry Row
 
 struct DeckEntryRow: View {
     let entry: Entry
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(entry.japanese)
-                    .font(AppTheme.Typography.japaneseBody)
-                    .foregroundStyle(
-                        Color.adaptive(
-                            light: AppTheme.Colors.Fallback.textPrimaryLight,
-                            dark: AppTheme.Colors.Fallback.textPrimaryDark
-                        )
-                    )
-
-                if let reading = entry.reading {
-                    Text(reading)
-                        .font(AppTheme.Typography.readingSmall)
+        NavigationLink(destination: EntryDetailView(entry: entry)) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(entry.japanese)
+                        .font(AppTheme.Typography.japaneseBody)
                         .foregroundStyle(
                             Color.adaptive(
-                                light: AppTheme.Colors.Fallback.primaryLight,
-                                dark: AppTheme.Colors.Fallback.primaryDark
+                                light: AppTheme.Colors.Fallback.textPrimaryLight,
+                                dark: AppTheme.Colors.Fallback.textPrimaryDark
                             )
                         )
+
+                    if let reading = entry.reading {
+                        Text(reading)
+                            .font(AppTheme.Typography.readingSmall)
+                            .foregroundStyle(
+                                Color.adaptive(
+                                    light: AppTheme.Colors.Fallback.primaryLight,
+                                    dark: AppTheme.Colors.Fallback.primaryDark
+                                )
+                            )
+                    }
                 }
+
+                Spacer()
+
+                // Entry type badge
+                Text(entry.entryType.capitalized)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(entry.entryType.entryTypeColor)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(entry.entryType.entryTypeColor.opacity(0.15))
+                    .clipShape(Capsule())
+
+                // Mastery indicator
+                Circle()
+                    .fill(masteryColor)
+                    .frame(width: 8, height: 8)
+
+                // Chevron for navigation
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textTertiaryLight,
+                            dark: AppTheme.Colors.Fallback.textTertiaryDark
+                        )
+                    )
             }
-
-            Spacer()
-
-            // Mastery indicator
-            Circle()
-                .fill(masteryColor)
-                .frame(width: 8, height: 8)
+            .padding(.vertical, AppTheme.Spacing.xs)
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, AppTheme.Spacing.xxs)
+        .buttonStyle(.plain)
     }
 
     private var masteryColor: Color {

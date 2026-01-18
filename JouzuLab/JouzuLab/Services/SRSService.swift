@@ -217,21 +217,25 @@ class SRSService {
 
     // MARK: - Queue Management
 
-    /// Get entries due for review
+    /// Get entries due for review (cards that have been studied before and are due)
     func getDueEntries(from entries: [Entry], limit: Int? = nil) -> [Entry] {
         let now = Date()
         var dueEntries = entries.filter { entry in
+            // Only include cards that have been reviewed before
+            guard entry.reviewCount > 0 else { return false }
+
+            // Check if due for review
             guard let nextReview = entry.nextReview else {
-                // New cards are always available
-                return entry.masteryLevel == .new
+                // If reviewed but no next review date, include it
+                return true
             }
             return nextReview <= now
         }
 
-        // Sort: due cards first (oldest first), then new cards
+        // Sort: oldest due first
         dueEntries.sort { entry1, entry2 in
-            let date1 = entry1.nextReview ?? Date.distantFuture
-            let date2 = entry2.nextReview ?? Date.distantFuture
+            let date1 = entry1.nextReview ?? Date.distantPast
+            let date2 = entry2.nextReview ?? Date.distantPast
             return date1 < date2
         }
 
@@ -243,7 +247,9 @@ class SRSService {
 
     /// Get new entries that haven't been studied yet
     func getNewEntries(from entries: [Entry], limit: Int? = nil) -> [Entry] {
-        var newEntries = entries.filter { $0.masteryLevel == .new && $0.reviewCount == 0 }
+        // A card is "new" if it has never been reviewed (reviewCount == 0)
+        // Don't rely on masteryLevel since older data might not have it set correctly
+        var newEntries = entries.filter { $0.reviewCount == 0 }
 
         // Shuffle for variety
         newEntries.shuffle()

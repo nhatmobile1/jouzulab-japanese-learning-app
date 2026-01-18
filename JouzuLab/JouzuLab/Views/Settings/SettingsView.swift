@@ -96,7 +96,7 @@ struct SettingsView: View {
                 // About Section
                 Section {
                     VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                        Text("JouzuLab (上手Lab)")
+                        Text("JouzuLab (上手ラボ)")
                             .font(AppTheme.Typography.headline)
                             .foregroundStyle(
                                 Color.adaptive(

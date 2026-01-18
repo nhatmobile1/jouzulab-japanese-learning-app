@@ -113,6 +113,7 @@ enum AppTheme {
         // Stats/numbers
         static let statLarge = Font.system(size: 36, weight: .bold, design: .rounded)
         static let statMedium = Font.system(size: 24, weight: .semibold, design: .rounded)
+        static let statSmall = Font.system(size: 18, weight: .semibold, design: .rounded)
     }
 
     // MARK: - Spacing

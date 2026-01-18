@@ -26,7 +26,6 @@
 		FA3A943D2F1B8C87004B9209 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94322F1B8C87004B9209 /* DashboardView.swift */; };
 		FA3A943F2F1C13F7004B9209 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A943E2F1C13F7004B9209 /* Deck.swift */; };
 		FA3A94432F1C14A0004B9209 /* AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94402F1C14A0004B9209 /* AudioService.swift */; };
-		FA3A94442F1C14A0004B9209 /* DeckService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94412F1C14A0004B9209 /* DeckService.swift */; };
 		FA3A94452F1C14A0004B9209 /* SRSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94422F1C14A0004B9209 /* SRSService.swift */; };
 		FA3A94492F1C14B2004B9209 /* DeckDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94462F1C14B2004B9209 /* DeckDetailView.swift */; };
 		FA3A944A2F1C14B2004B9209 /* DecksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94472F1C14B2004B9209 /* DecksView.swift */; };
@@ -37,6 +36,12 @@
 		FA3A945A2F1C16E4004B9209 /* SessionConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94562F1C16E4004B9209 /* SessionConfigView.swift */; };
 		FA3A945B2F1C16E4004B9209 /* SessionSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94572F1C16E4004B9209 /* SessionSummaryView.swift */; };
 		FA3A945C2F1C16E4004B9209 /* FlashcardSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3A94532F1C16E4004B9209 /* FlashcardSessionView.swift */; };
+		FABE76CD2F1C23480020F4E7 /* StreakService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FABE76CC2F1C23480020F4E7 /* StreakService.swift */; };
+		FABE76CF2F1C23B20020F4E7 /* StreakWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FABE76CE2F1C23B20020F4E7 /* StreakWidget.swift */; };
+		FABE76D12F1C43CC0020F4E7 /* StudySessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FABE76D02F1C43CC0020F4E7 /* StudySessionManager.swift */; };
+		FABE76D32F1C50000020F4E7 /* DeckCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FABE76D22F1C50000020F4E7 /* DeckCatalog.swift */; };
+		FABE76D52F1C50100020F4E7 /* genki_deck.json in Resources */ = {isa = PBXBuildFile; fileRef = FABE76D42F1C50100020F4E7 /* genki_deck.json */; };
+		FABE76D72F1C52200020F4E7 /* DeckService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FABE76D62F1C52200020F4E7 /* DeckService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -60,7 +65,6 @@
 		FA3A94382F1B8C87004B9209 /* StudyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyView.swift; sourceTree = "<group>"; };
 		FA3A943E2F1C13F7004B9209 /* Deck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Deck.swift; sourceTree = "<group>"; };
 		FA3A94402F1C14A0004B9209 /* AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioService.swift; sourceTree = "<group>"; };
-		FA3A94412F1C14A0004B9209 /* DeckService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckService.swift; sourceTree = "<group>"; };
 		FA3A94422F1C14A0004B9209 /* SRSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SRSService.swift; sourceTree = "<group>"; };
 		FA3A94462F1C14B2004B9209 /* DeckDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckDetailView.swift; sourceTree = "<group>"; };
 		FA3A94472F1C14B2004B9209 /* DecksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecksView.swift; sourceTree = "<group>"; };
@@ -71,6 +75,12 @@
 		FA3A94552F1C16E4004B9209 /* GradeButtonsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradeButtonsView.swift; sourceTree = "<group>"; };
 		FA3A94562F1C16E4004B9209 /* SessionConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionConfigView.swift; sourceTree = "<group>"; };
 		FA3A94572F1C16E4004B9209 /* SessionSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSummaryView.swift; sourceTree = "<group>"; };
+		FABE76CC2F1C23480020F4E7 /* StreakService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreakService.swift; sourceTree = "<group>"; };
+		FABE76CE2F1C23B20020F4E7 /* StreakWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreakWidget.swift; sourceTree = "<group>"; };
+		FABE76D02F1C43CC0020F4E7 /* StudySessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudySessionManager.swift; sourceTree = "<group>"; };
+		FABE76D22F1C50000020F4E7 /* DeckCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckCatalog.swift; sourceTree = "<group>"; };
+		FABE76D42F1C50100020F4E7 /* genki_deck.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = genki_deck.json; sourceTree = "<group>"; };
+		FABE76D62F1C52200020F4E7 /* DeckService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -117,8 +127,11 @@
 		A5000004 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				FABE76D22F1C50000020F4E7 /* DeckCatalog.swift */,
+				FABE76D62F1C52200020F4E7 /* DeckService.swift */,
+				FABE76D02F1C43CC0020F4E7 /* StudySessionManager.swift */,
+				FABE76CC2F1C23480020F4E7 /* StreakService.swift */,
 				FA3A94402F1C14A0004B9209 /* AudioService.swift */,
-				FA3A94412F1C14A0004B9209 /* DeckService.swift */,
 				FA3A94422F1C14A0004B9209 /* SRSService.swift */,
 				A2000004 /* DataImportService.swift */,
 			);
@@ -155,6 +168,7 @@
 		A5000007 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				FABE76CE2F1C23B20020F4E7 /* StreakWidget.swift */,
 				FA3A942E2F1B8C69004B9209 /* AppHeader.swift */,
 				FA3A942F2F1B8C69004B9209 /* SideMenu.swift */,
 				A2000008 /* EntryCard.swift */,
@@ -166,6 +180,7 @@
 			isa = PBXGroup;
 			children = (
 				A2000009 /* japanese_data.json */,
+				FABE76D42F1C50100020F4E7 /* genki_deck.json */,
 				A2000010 /* Assets.xcassets */,
 			);
 			path = Resources;
@@ -292,6 +307,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1000009 /* japanese_data.json in Resources */,
+				FABE76D52F1C50100020F4E7 /* genki_deck.json in Resources */,
 				A1000010 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -304,9 +320,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1000001 /* JouzuLabApp.swift in Sources */,
+				FABE76CF2F1C23B20020F4E7 /* StreakWidget.swift in Sources */,
 				A1000002 /* ContentView.swift in Sources */,
 				A1000003 /* Entry.swift in Sources */,
 				A1000004 /* DataImportService.swift in Sources */,
+				FABE76D12F1C43CC0020F4E7 /* StudySessionManager.swift in Sources */,
 				A1000005 /* BrowseView.swift in Sources */,
 				FA3A94512F1C16A6004B9209 /* BrowseFilters.swift in Sources */,
 				FA3A94522F1C16A6004B9209 /* FilterBarView.swift in Sources */,
@@ -319,7 +337,6 @@
 				FA3A945B2F1C16E4004B9209 /* SessionSummaryView.swift in Sources */,
 				FA3A945C2F1C16E4004B9209 /* FlashcardSessionView.swift in Sources */,
 				FA3A94432F1C14A0004B9209 /* AudioService.swift in Sources */,
-				FA3A94442F1C14A0004B9209 /* DeckService.swift in Sources */,
 				FA3A94452F1C14A0004B9209 /* SRSService.swift in Sources */,
 				FA3A943A2F1B8C87004B9209 /* StudyView.swift in Sources */,
 				FA3A943B2F1B8C87004B9209 /* SettingsView.swift in Sources */,
@@ -330,7 +347,10 @@
 				FA3A943F2F1C13F7004B9209 /* Deck.swift in Sources */,
 				FA3A940B2F1B8104004B9209 /* Theme.swift in Sources */,
 				FA3A94302F1B8C69004B9209 /* AppHeader.swift in Sources */,
+				FABE76CD2F1C23480020F4E7 /* StreakService.swift in Sources */,
 				FA3A94312F1B8C69004B9209 /* SideMenu.swift in Sources */,
+				FABE76D32F1C50000020F4E7 /* DeckCatalog.swift in Sources */,
+				FABE76D72F1C52200020F4E7 /* DeckService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

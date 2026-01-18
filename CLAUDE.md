@@ -13,6 +13,7 @@ Self-directed Japanese language learning tool that converts personal lesson note
 ## Current Stats
 
 - 10,518 unique entries (deduplicated from 12,173 raw)
+- ~4,000 complete entries imported (with Japanese + reading + English)
 - 270 lesson sessions (Feb 2023 - Jan 2026)
 - 89.3% have furigana readings
 - 51.9% have English translations
@@ -74,6 +75,7 @@ japanese-learning-app/
         │   └── Deck.swift            # SwiftData model for imported decks
         ├── Services/
         │   ├── DataImportService.swift   # Initial data import from bundle
+        │   ├── DeckCatalog.swift         # Bundled deck catalog (italki, Genki)
         │   ├── DeckService.swift         # Import/manage custom JSON decks
         │   ├── SRSService.swift          # SM-2 spaced repetition algorithm
         │   └── AudioService.swift        # Japanese TTS via AVSpeechSynthesizer
@@ -281,6 +283,30 @@ cd JouzuLab && xcodegen generate
 - Flashcard: Front (Japanese), Back (reading + English + audio button)
 - Grade buttons: Again (red), Hard (orange), Good (green), Easy (blue)
 - Summary: Cards reviewed, accuracy %, option to continue
+
+## Recent Changes (January 18, 2026)
+
+### Deck Detail View Improvements
+- Entries now grouped by month/year for italki notes (e.g., "January 2024")
+- Genki entries grouped by lesson (e.g., "L1", "会G") with natural sorting
+- Entries are clickable → navigates to EntryDetailView
+- Entry rows show type badge, mastery indicator, and navigation chevron
+- Collapsible sections show entry count and type summary when collapsed
+- Large groups limited to 50 entries for performance
+
+### Complete Entries Filter
+- Only imports entries with Japanese + reading + English translation
+- Reduces italki notes from ~10,500 to ~4,000 usable flashcard entries
+- Applied in both DeckCatalog (bundled) and DeckService (file import)
+
+### Dashboard Updates
+- "Total Entries" → "Total Studying" (entries with masteryLevel != .new)
+- "Entry Types" breakdown now shows only entries being studied
+
+### Bug Fixes
+- Fixed italki deck not showing as installed (migration for existing users)
+- Fixed "Import Failed" error (DeckCatalog handles both DeckJSON and JapaneseData formats)
+- Added app icon (koi fish design)
 
 ## Next Steps (Immediate)
 

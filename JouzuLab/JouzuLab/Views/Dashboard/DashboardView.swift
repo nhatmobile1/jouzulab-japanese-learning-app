@@ -10,6 +10,15 @@ struct DashboardView: View {
 
     // MARK: - Computed Stats
 
+    /// Entries currently being studied (not new)
+    private var studyingEntries: [Entry] {
+        allEntries.filter { $0.masteryLevel != .new }
+    }
+
+    private var totalStudying: Int {
+        studyingEntries.count
+    }
+
     private var totalEntries: Int {
         allEntries.count
     }
@@ -39,14 +48,15 @@ struct DashboardView: View {
     }
 
     private var recentEntries: [Entry] {
-        Array(allEntries
+        Array(studyingEntries
             .sorted { ($0.lastReviewed ?? .distantPast) > ($1.lastReviewed ?? .distantPast) }
             .prefix(5))
     }
 
-    private var entryTypeCounts: [String: Int] {
+    /// Entry type counts for entries being studied
+    private var studyingEntryTypeCounts: [String: Int] {
         var counts: [String: Int] = [:]
-        for entry in allEntries {
+        for entry in studyingEntries {
             counts[entry.entryType, default: 0] += 1
         }
         return counts
@@ -156,8 +166,8 @@ struct DashboardView: View {
             GridItem(.flexible(), spacing: AppTheme.Spacing.md)
         ], spacing: AppTheme.Spacing.md) {
             StatCard(
-                title: "Total Entries",
-                value: "\(totalEntries.formatted())",
+                title: "Total Studying",
+                value: "\(totalStudying.formatted())",
                 icon: "book.fill",
                 color: Color.adaptive(
                     light: AppTheme.Colors.Fallback.primaryLight,
@@ -294,7 +304,7 @@ struct DashboardView: View {
 
     private var entryTypeBreakdown: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            Text("Entry Types")
+            Text("Studying by Type")
                 .font(AppTheme.Typography.headline)
                 .foregroundStyle(
                     Color.adaptive(
@@ -306,22 +316,22 @@ struct DashboardView: View {
             HStack(spacing: AppTheme.Spacing.md) {
                 EntryTypeBar(
                     type: "Vocab",
-                    count: entryTypeCounts["vocab"] ?? 0,
-                    total: totalEntries,
+                    count: studyingEntryTypeCounts["vocab"] ?? 0,
+                    total: totalStudying,
                     color: AppTheme.Colors.Fallback.vocab
                 )
 
                 EntryTypeBar(
                     type: "Phrase",
-                    count: entryTypeCounts["phrase"] ?? 0,
-                    total: totalEntries,
+                    count: studyingEntryTypeCounts["phrase"] ?? 0,
+                    total: totalStudying,
                     color: AppTheme.Colors.Fallback.phrase
                 )
 
                 EntryTypeBar(
                     type: "Sentence",
-                    count: entryTypeCounts["sentence"] ?? 0,
-                    total: totalEntries,
+                    count: studyingEntryTypeCounts["sentence"] ?? 0,
+                    total: totalStudying,
                     color: AppTheme.Colors.Fallback.sentence
                 )
             }

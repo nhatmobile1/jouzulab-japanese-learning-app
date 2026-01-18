@@ -27,11 +27,14 @@ struct SessionConfigView: View {
     }
 
     private var newCardAvailable: Int {
-        filteredEntries.filter { $0.masteryLevel == .new && $0.reviewCount == 0 }.count
+        // A card is "new" if it has never been reviewed (reviewCount == 0)
+        // Don't rely on masteryLevel since older data might not have it set correctly
+        filteredEntries.filter { $0.reviewCount == 0 }.count
     }
 
     private var filteredEntries: [Entry] {
-        var entries = allEntries
+        // Only include complete entries (have Japanese, reading, AND English)
+        var entries = allEntries.filter { $0.isComplete }
 
         // Filter by deck
         if let deck = selectedDeck {
@@ -47,16 +50,21 @@ struct SessionConfigView: View {
         return entries
     }
 
+    private var totalCardsToStudy: Int {
+        min(selectedNewCardCount, newCardAvailable) + reviewDueCount
+    }
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: AppTheme.Spacing.xl) {
-                    // Session stats preview
-                    StatsPreviewCard(
-                        reviewDue: reviewDueCount,
-                        newAvailable: newCardAvailable
-                    )
-                    .padding(.horizontal, AppTheme.Spacing.md)
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: AppTheme.Spacing.xl) {
+                        // Session stats preview
+                        StatsPreviewCard(
+                            reviewDue: reviewDueCount,
+                            newAvailable: newCardAvailable
+                        )
+                        .padding(.horizontal, AppTheme.Spacing.md)
 
                     // Deck selection
                     if !decks.isEmpty {
@@ -189,135 +197,90 @@ struct SessionConfigView: View {
 
                     // Audio settings
                     VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                        Text("Audio Settings")
-                            .font(AppTheme.Typography.headline)
-                            .foregroundStyle(
-                                Color.adaptive(
-                                    light: AppTheme.Colors.Fallback.textPrimaryLight,
-                                    dark: AppTheme.Colors.Fallback.textPrimaryDark
-                                )
-                            )
-
-                        // Speed
                         HStack {
-                            Text("Speed")
-                                .font(AppTheme.Typography.body)
+                            Text("Audio Speed")
+                                .font(AppTheme.Typography.headline)
                                 .foregroundStyle(
                                     Color.adaptive(
-                                        light: AppTheme.Colors.Fallback.textSecondaryLight,
-                                        dark: AppTheme.Colors.Fallback.textSecondaryDark
+                                        light: AppTheme.Colors.Fallback.textPrimaryLight,
+                                        dark: AppTheme.Colors.Fallback.textPrimaryDark
                                     )
                                 )
                             Spacer()
-                            HStack(spacing: AppTheme.Spacing.xs) {
-                                ForEach(SpeechSpeed.allCases) { speed in
-                                    Button {
-                                        audioService.setSpeed(speed)
-                                    } label: {
+
+                            // Test button
+                            Button {
+                                audioService.speak("こんにちは")
+                            } label: {
+                                HStack(spacing: AppTheme.Spacing.xxs) {
+                                    Image(systemName: "speaker.wave.2")
+                                    Text("Test")
+                                }
+                                .font(AppTheme.Typography.caption)
+                                .foregroundStyle(
+                                    Color.adaptive(
+                                        light: AppTheme.Colors.Fallback.primaryLight,
+                                        dark: AppTheme.Colors.Fallback.primaryDark
+                                    )
+                                )
+                            }
+                        }
+
+                        HStack(spacing: AppTheme.Spacing.sm) {
+                            ForEach(SpeechSpeed.allCases) { speed in
+                                Button {
+                                    audioService.setSpeed(speed)
+                                } label: {
+                                    HStack(spacing: AppTheme.Spacing.xxs) {
                                         Image(systemName: speed.icon)
                                             .font(.system(size: 14))
-                                            .foregroundStyle(
-                                                audioService.currentSpeed == speed
-                                                    ? .white
-                                                    : Color.adaptive(
-                                                        light: AppTheme.Colors.Fallback.textSecondaryLight,
-                                                        dark: AppTheme.Colors.Fallback.textSecondaryDark
-                                                    )
-                                            )
-                                            .frame(width: 32, height: 32)
-                                            .background(
-                                                audioService.currentSpeed == speed
-                                                    ? Color.adaptive(
-                                                        light: AppTheme.Colors.Fallback.primaryLight,
-                                                        dark: AppTheme.Colors.Fallback.primaryDark
-                                                    )
-                                                    : Color.adaptive(
-                                                        light: AppTheme.Colors.Fallback.surfaceElevatedLight,
-                                                        dark: AppTheme.Colors.Fallback.surfaceElevatedDark
-                                                    )
-                                            )
-                                            .clipShape(Circle())
+                                        Text(speed.rawValue)
+                                            .font(AppTheme.Typography.caption)
                                     }
+                                    .foregroundStyle(
+                                        audioService.currentSpeed == speed
+                                            ? .white
+                                            : Color.adaptive(
+                                                light: AppTheme.Colors.Fallback.textPrimaryLight,
+                                                dark: AppTheme.Colors.Fallback.textPrimaryDark
+                                            )
+                                    )
+                                    .padding(.horizontal, AppTheme.Spacing.sm)
+                                    .padding(.vertical, AppTheme.Spacing.xs)
+                                    .background(
+                                        audioService.currentSpeed == speed
+                                            ? Color.adaptive(
+                                                light: AppTheme.Colors.Fallback.primaryLight,
+                                                dark: AppTheme.Colors.Fallback.primaryDark
+                                            )
+                                            : Color.adaptive(
+                                                light: AppTheme.Colors.Fallback.surfaceElevatedLight,
+                                                dark: AppTheme.Colors.Fallback.surfaceElevatedDark
+                                            )
+                                    )
+                                    .clipShape(Capsule())
                                 }
                             }
-                        }
-
-                        // Volume
-                        HStack {
-                            Image(systemName: "speaker.fill")
-                                .font(.system(size: 12))
-                                .foregroundStyle(
-                                    Color.adaptive(
-                                        light: AppTheme.Colors.Fallback.textTertiaryLight,
-                                        dark: AppTheme.Colors.Fallback.textTertiaryDark
-                                    )
-                                )
-                            Slider(value: Binding(
-                                get: { Double(audioService.volume) },
-                                set: { audioService.setVolume(Float($0)) }
-                            ), in: 0...1)
-                            .tint(Color.adaptive(
-                                light: AppTheme.Colors.Fallback.primaryLight,
-                                dark: AppTheme.Colors.Fallback.primaryDark
-                            ))
-                            Image(systemName: "speaker.wave.3.fill")
-                                .font(.system(size: 12))
-                                .foregroundStyle(
-                                    Color.adaptive(
-                                        light: AppTheme.Colors.Fallback.textTertiaryLight,
-                                        dark: AppTheme.Colors.Fallback.textTertiaryDark
-                                    )
-                                )
-                        }
-
-                        // Test button
-                        Button {
-                            audioService.speak("こんにちは")
-                        } label: {
-                            HStack {
-                                Image(systemName: "speaker.wave.2")
-                                Text("Test Audio")
-                            }
-                            .font(AppTheme.Typography.caption)
-                            .foregroundStyle(
-                                Color.adaptive(
-                                    light: AppTheme.Colors.Fallback.primaryLight,
-                                    dark: AppTheme.Colors.Fallback.primaryDark
-                                )
-                            )
                         }
                     }
                     .padding(AppTheme.Spacing.lg)
                     .cardStyle()
                     .padding(.horizontal, AppTheme.Spacing.md)
 
-                    Spacer(minLength: AppTheme.Spacing.xl)
-
-                    // Start button
-                    Button {
-                        onStartSession(selectedNewCardCount, selectedJLPTFilter, selectedDeck)
-                    } label: {
-                        HStack {
-                            Image(systemName: "play.fill")
-                            Text("Start Study Session")
-                        }
-                        .font(AppTheme.Typography.headline)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, AppTheme.Spacing.md)
-                        .background(
-                            Color.adaptive(
-                                light: AppTheme.Colors.Fallback.primaryLight,
-                                dark: AppTheme.Colors.Fallback.primaryDark
-                            )
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
+                        Spacer(minLength: AppTheme.Spacing.xl)
                     }
-                    .padding(.horizontal, AppTheme.Spacing.md)
-                    .disabled(reviewDueCount == 0 && newCardAvailable == 0)
-                    .opacity((reviewDueCount == 0 && newCardAvailable == 0) ? 0.5 : 1)
+                    .padding(.vertical, AppTheme.Spacing.lg)
                 }
-                .padding(.vertical, AppTheme.Spacing.lg)
+
+                // Floating Start Button
+                StartSessionButton(
+                    totalCards: totalCardsToStudy,
+                    reviewDue: reviewDueCount,
+                    newCards: min(selectedNewCardCount, newCardAvailable),
+                    isEnabled: totalCardsToStudy > 0
+                ) {
+                    onStartSession(selectedNewCardCount, selectedJLPTFilter, selectedDeck)
+                }
             }
             .background(
                 Color.adaptive(
@@ -342,6 +305,60 @@ struct SessionConfigView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Start Session Button
+
+struct StartSessionButton: View {
+    let totalCards: Int
+    let reviewDue: Int
+    let newCards: Int
+    let isEnabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.md) {
+            // Main button - centered, not full width
+            Button(action: action) {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 18, weight: .semibold))
+
+                    Text(isEnabled ? "Start Session" : "No Cards")
+                        .font(AppTheme.Typography.headline)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, AppTheme.Spacing.xl)
+                .padding(.vertical, AppTheme.Spacing.md)
+                .background(
+                    isEnabled
+                        ? Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        )
+                        : Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textTertiaryLight,
+                            dark: AppTheme.Colors.Fallback.textTertiaryDark
+                        )
+                )
+                .clipShape(Capsule())
+                .shadow(
+                    color: isEnabled
+                        ? Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        ).opacity(0.3)
+                        : .clear,
+                    radius: 8,
+                    x: 0,
+                    y: 4
+                )
+            }
+            .disabled(!isEnabled)
+        }
+        .padding(.vertical, AppTheme.Spacing.lg)
+        .padding(.horizontal, AppTheme.Spacing.md)
     }
 }
 

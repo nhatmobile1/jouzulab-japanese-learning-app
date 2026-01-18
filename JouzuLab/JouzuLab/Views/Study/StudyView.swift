@@ -10,19 +10,30 @@ struct StudyView: View {
     @State private var showSessionSummary = false
     @State private var sessionQueue: [Entry] = []
     @State private var lastSessionStats: SessionStats?
+    @State private var isResumingSession = false
+    @State private var resumeSessionState: PersistedSessionState?
 
+    @StateObject private var streakService = StreakService.shared
+    @StateObject private var sessionManager = StudySessionManager.shared
     private let srsService = SRSService.shared
+
+    /// Entries that are complete (have Japanese, reading, and English)
+    private var completeEntries: [Entry] {
+        allEntries.filter { $0.isComplete }
+    }
 
     private var reviewDueCount: Int {
         let now = Date()
-        return allEntries.filter { entry in
+        return completeEntries.filter { entry in
             guard let nextReview = entry.nextReview else { return false }
             return nextReview <= now
         }.count
     }
 
     private var newCount: Int {
-        allEntries.filter { $0.masteryLevel == .new && $0.reviewCount == 0 }.count
+        // A card is "new" if it has never been reviewed (reviewCount == 0)
+        // Only count complete entries (have reading AND English)
+        completeEntries.filter { $0.reviewCount == 0 }.count
     }
 
     private var hasCardsToStudy: Bool {
@@ -145,29 +156,158 @@ struct StudyView: View {
                         .cardStyle()
                         .padding(.horizontal, AppTheme.Spacing.md)
 
-                        // Start Study Button
-                        Button {
-                            showSessionConfig = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "play.fill")
-                                Text("Start Study Session")
+                        // Streak Widget
+                        StreakWidget(streakService: streakService)
+                            .padding(.horizontal, AppTheme.Spacing.md)
+
+                        // Session Buttons
+                        if sessionManager.hasActiveSession, let info = sessionManager.activeSessionInfo {
+                            // Active session card
+                            VStack(spacing: AppTheme.Spacing.md) {
+                                VStack(spacing: AppTheme.Spacing.xs) {
+                                    Text("Session in Progress")
+                                        .font(AppTheme.Typography.headline)
+                                        .foregroundStyle(
+                                            Color.adaptive(
+                                                light: AppTheme.Colors.Fallback.textPrimaryLight,
+                                                dark: AppTheme.Colors.Fallback.textPrimaryDark
+                                            )
+                                        )
+
+                                    HStack(spacing: AppTheme.Spacing.lg) {
+                                        VStack {
+                                            Text("\(info.cardsRemaining)")
+                                                .font(AppTheme.Typography.statSmall)
+                                                .foregroundStyle(
+                                                    Color.adaptive(
+                                                        light: AppTheme.Colors.Fallback.primaryLight,
+                                                        dark: AppTheme.Colors.Fallback.primaryDark
+                                                    )
+                                                )
+                                            Text("Remaining")
+                                                .font(AppTheme.Typography.caption)
+                                                .foregroundStyle(
+                                                    Color.adaptive(
+                                                        light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                                        dark: AppTheme.Colors.Fallback.textSecondaryDark
+                                                    )
+                                                )
+                                        }
+
+                                        VStack {
+                                            Text("\(info.cardsReviewed)")
+                                                .font(AppTheme.Typography.statSmall)
+                                                .foregroundStyle(
+                                                    Color.adaptive(
+                                                        light: AppTheme.Colors.Fallback.accentLight,
+                                                        dark: AppTheme.Colors.Fallback.accentDark
+                                                    )
+                                                )
+                                            Text("Reviewed")
+                                                .font(AppTheme.Typography.caption)
+                                                .foregroundStyle(
+                                                    Color.adaptive(
+                                                        light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                                        dark: AppTheme.Colors.Fallback.textSecondaryDark
+                                                    )
+                                                )
+                                        }
+
+                                        if info.cardsReviewed > 0 {
+                                            VStack {
+                                                Text("\(Int(info.accuracy * 100))%")
+                                                    .font(AppTheme.Typography.statSmall)
+                                                    .foregroundStyle(AppTheme.Colors.Fallback.success)
+                                                Text("Accuracy")
+                                                    .font(AppTheme.Typography.caption)
+                                                    .foregroundStyle(
+                                                        Color.adaptive(
+                                                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                                                        )
+                                                    )
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(AppTheme.Spacing.md)
+
+                                // Continue button
+                                Button {
+                                    resumeSession()
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "play.fill")
+                                        Text("Continue Session")
+                                    }
+                                    .font(AppTheme.Typography.headline)
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, AppTheme.Spacing.md)
+                                    .background(
+                                        Color.adaptive(
+                                            light: AppTheme.Colors.Fallback.primaryLight,
+                                            dark: AppTheme.Colors.Fallback.primaryDark
+                                        )
+                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
+                                }
+
+                                // Start new session button
+                                Button {
+                                    sessionManager.clearSession()
+                                    showSessionConfig = true
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "plus")
+                                        Text("Start New Session")
+                                    }
+                                    .font(AppTheme.Typography.subheadline)
+                                    .foregroundStyle(
+                                        Color.adaptive(
+                                            light: AppTheme.Colors.Fallback.primaryLight,
+                                            dark: AppTheme.Colors.Fallback.primaryDark
+                                        )
+                                    )
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, AppTheme.Spacing.sm)
+                                    .background(
+                                        Color.adaptive(
+                                            light: AppTheme.Colors.Fallback.primaryLight,
+                                            dark: AppTheme.Colors.Fallback.primaryDark
+                                        ).opacity(0.1)
+                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
+                                }
                             }
-                            .font(AppTheme.Typography.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, AppTheme.Spacing.md)
-                            .background(
-                                Color.adaptive(
-                                    light: AppTheme.Colors.Fallback.primaryLight,
-                                    dark: AppTheme.Colors.Fallback.primaryDark
+                            .padding(AppTheme.Spacing.md)
+                            .cardStyle()
+                            .padding(.horizontal, AppTheme.Spacing.md)
+                        } else {
+                            // Start Study Button (no active session)
+                            Button {
+                                showSessionConfig = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "play.fill")
+                                    Text("Start Study Session")
+                                }
+                                .font(AppTheme.Typography.headline)
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, AppTheme.Spacing.md)
+                                .background(
+                                    Color.adaptive(
+                                        light: AppTheme.Colors.Fallback.primaryLight,
+                                        dark: AppTheme.Colors.Fallback.primaryDark
+                                    )
                                 )
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
+                                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
+                            }
+                            .padding(.horizontal, AppTheme.Spacing.md)
+                            .disabled(!hasCardsToStudy)
+                            .opacity(hasCardsToStudy ? 1 : 0.5)
                         }
-                        .padding(.horizontal, AppTheme.Spacing.md)
-                        .disabled(!hasCardsToStudy)
-                        .opacity(hasCardsToStudy ? 1 : 0.5)
 
                         // Features list
                         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
@@ -222,11 +362,16 @@ struct StudyView: View {
             }
         }
         .fullScreenCover(isPresented: $showFlashcardSession) {
-            FlashcardSessionView(initialQueue: sessionQueue) { stats in
-                lastSessionStats = stats
-                showFlashcardSession = false
-                showSessionSummary = true
-            }
+            FlashcardSessionView(
+                initialQueue: sessionQueue,
+                resumeState: resumeSessionState,
+                onSessionComplete: { stats in
+                    lastSessionStats = stats
+                    sessionManager.clearSession()
+                    showFlashcardSession = false
+                    showSessionSummary = true
+                }
+            )
         }
         .sheet(isPresented: $showSessionSummary) {
             if let stats = lastSessionStats {
@@ -247,7 +392,8 @@ struct StudyView: View {
     // MARK: - Session Management
 
     private func startSession(newCardLimit: Int, jlptFilter: String?, deck: Deck?) {
-        var entriesToStudy = allEntries
+        // Only include complete entries (have Japanese, reading, AND English)
+        var entriesToStudy = allEntries.filter { $0.isComplete }
 
         // Apply deck filter if selected
         if let deck = deck {
@@ -266,7 +412,26 @@ struct StudyView: View {
             newCardLimit: newCardLimit
         )
 
+        // Clear any previous resume state (this is a new session)
+        resumeSessionState = nil
+
         showSessionConfig = false
+
+        // Only show flashcard session if we have cards to study
+        // Use a small delay to ensure the sheet dismissal animation completes
+        if !sessionQueue.isEmpty {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                showFlashcardSession = true
+            }
+        }
+    }
+
+    private func resumeSession() {
+        guard let state = sessionManager.loadSession() else { return }
+
+        // Restore entries from saved IDs
+        sessionQueue = sessionManager.restoreEntries(from: state, allEntries: allEntries)
+        resumeSessionState = state
 
         if !sessionQueue.isEmpty {
             showFlashcardSession = true

@@ -10,6 +10,7 @@ struct ContentView: View {
     enum Tab: String, CaseIterable {
         case home = "Home"
         case study = "Study"
+        case decks = "Decks"
         case shadow = "Shadow"
         case browse = "Browse"
         case settings = "Settings"
@@ -18,6 +19,7 @@ struct ContentView: View {
             switch self {
             case .home: return "house.fill"
             case .study: return "rectangle.stack.fill"
+            case .decks: return "square.stack.3d.up.fill"
             case .shadow: return "waveform"
             case .browse: return "book.fill"
             case .settings: return "gearshape.fill"
@@ -47,16 +49,71 @@ struct ContentView: View {
         importError = nil
 
         let service = DataImportService(modelContext: modelContext)
+        let catalog = DeckCatalog.shared
 
         do {
             if try service.needsImport() {
-                let result = try await service.performInitialImport()
-                print("Imported \(result.imported) entries")
+                // Fresh install: Use DeckCatalog to load italki notes, which creates proper Deck record
+                if let italkiDeck = catalog.deck(byID: "jouzu_italki_notes") {
+                    let result = try await catalog.loadDeck(italkiDeck, modelContext: modelContext)
+                    print("Loaded italki deck: \(result.entriesImported) entries imported, \(result.entriesSkipped) skipped")
+                }
+            } else {
+                // Existing data: Check if we need to migrate (entries exist but no Deck record)
+                try await migrateExistingEntriesToDeck()
             }
             isLoading = false
         } catch {
             importError = error.localizedDescription
             isLoading = false
+        }
+    }
+
+    /// Migrate existing entries to have proper Deck records if they were imported before the deck system
+    private func migrateExistingEntriesToDeck() async throws {
+        let catalog = DeckCatalog.shared
+
+        // Check if italki deck exists
+        var descriptor = FetchDescriptor<Deck>(
+            predicate: #Predicate { $0.id == "jouzu_italki_notes" }
+        )
+        descriptor.fetchLimit = 1
+        let existingDeck = try modelContext.fetch(descriptor).first
+
+        if existingDeck == nil {
+            // Check if we have entries that should belong to the italki deck
+            let entryDescriptor = FetchDescriptor<Entry>()
+            let allEntries = try modelContext.fetch(entryDescriptor)
+
+            // If there are entries without deckId, they're from the old import system
+            let orphanedEntries = allEntries.filter { $0.deckId == nil }
+
+            if !orphanedEntries.isEmpty {
+                // Create the italki deck
+                let deck = Deck(
+                    id: "jouzu_italki_notes",
+                    name: "italki Lesson Notes",
+                    deckDescription: "~4,000 complete vocabulary and phrases from personal italki Japanese lessons (2023-2026)",
+                    author: "JouzuLab",
+                    version: "1.0",
+                    sourceFileName: "japanese_data"
+                )
+                modelContext.insert(deck)
+
+                // Update all orphaned entries to belong to this deck
+                var entryIDs: [String] = []
+                for entry in orphanedEntries {
+                    entry.deckId = "jouzu_italki_notes"
+                    entryIDs.append(entry.id)
+                }
+
+                deck.entryIDs = entryIDs
+                deck.entryCount = entryIDs.count
+                deck.installedDate = Date()
+
+                try modelContext.save()
+                print("Migrated \(orphanedEntries.count) entries to italki deck")
+            }
         }
     }
 }
@@ -79,6 +136,12 @@ struct MainTabView: View {
                     Label(ContentView.Tab.study.rawValue, systemImage: ContentView.Tab.study.icon)
                 }
                 .tag(ContentView.Tab.study)
+
+            DecksView()
+                .tabItem {
+                    Label(ContentView.Tab.decks.rawValue, systemImage: ContentView.Tab.decks.icon)
+                }
+                .tag(ContentView.Tab.decks)
 
             ShadowView()
                 .tabItem {

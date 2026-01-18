@@ -4,8 +4,9 @@ import UniformTypeIdentifiers
 
 struct DecksView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Deck.installedDate, order: .reverse) private var decks: [Deck]
+    @Query(sort: \Deck.installedDate, order: .reverse) private var installedDecks: [Deck]
 
+    @State private var selectedCategory: DeckCategory = .myDecks
     @State private var showImportPicker = false
     @State private var showImportResult = false
     @State private var importResult: DeckImportResult?
@@ -14,24 +15,43 @@ struct DecksView: View {
     @State private var deckToDelete: Deck?
     @State private var showDeleteConfirmation = false
 
+    @StateObject private var catalog = DeckCatalog.shared
+
     var body: some View {
         NavigationStack {
-            Group {
-                if decks.isEmpty {
-                    EmptyDecksView {
-                        showImportPicker = true
-                    }
-                } else {
-                    List {
-                        ForEach(decks) { deck in
-                            NavigationLink(destination: DeckDetailView(deck: deck)) {
-                                DeckRowView(deck: deck)
+            VStack(spacing: 0) {
+                // Category tabs
+                CategoryTabBar(selectedCategory: $selectedCategory)
+
+                // Content based on selected category
+                Group {
+                    switch selectedCategory {
+                    case .myDecks:
+                        MyDecksSection(
+                            installedDecks: installedDecks,
+                            onImport: { showImportPicker = true },
+                            onDelete: { deck in
+                                deckToDelete = deck
+                                showDeleteConfirmation = true
                             }
-                        }
-                        .onDelete(perform: confirmDelete)
+                        )
+                    case .jouzu:
+                        CatalogDecksSection(
+                            category: .jouzu,
+                            installedDeckIDs: Set(installedDecks.map { $0.id }),
+                            onLoad: loadCatalogDeck,
+                            onUnload: unloadCatalogDeck
+                        )
+                    case .textbooks:
+                        CatalogDecksSection(
+                            category: .textbooks,
+                            installedDeckIDs: Set(installedDecks.map { $0.id }),
+                            onLoad: loadCatalogDeck,
+                            onUnload: unloadCatalogDeck
+                        )
+                    case .community:
+                        CommunityDecksSection()
                     }
-                    .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
                 }
             }
             .background(
@@ -43,11 +63,13 @@ struct DecksView: View {
             )
             .navigationTitle("Decks")
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showImportPicker = true
-                    } label: {
-                        Image(systemName: "plus")
+                if selectedCategory == .myDecks {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            showImportPicker = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
             }
@@ -65,7 +87,7 @@ struct DecksView: View {
                     Text(importResultMessage(result))
                 }
             }
-            .alert("Import Error", isPresented: $showErrorAlert) {
+            .alert("Error", isPresented: $showErrorAlert) {
                 Button("OK") { }
             } message: {
                 Text(importError?.localizedDescription ?? "Unknown error")
@@ -88,7 +110,31 @@ struct DecksView: View {
         }
     }
 
-    // MARK: - Import Handling
+    // MARK: - Catalog Deck Actions
+
+    private func loadCatalogDeck(_ catalogDeck: CatalogDeck) {
+        Task {
+            do {
+                let result = try await catalog.loadDeck(catalogDeck, modelContext: modelContext)
+                importResult = result
+                showImportResult = true
+            } catch {
+                importError = error
+                showErrorAlert = true
+            }
+        }
+    }
+
+    private func unloadCatalogDeck(_ catalogDeck: CatalogDeck) {
+        do {
+            try catalog.unloadDeck(catalogDeck, modelContext: modelContext, deleteEntries: true)
+        } catch {
+            importError = error
+            showErrorAlert = true
+        }
+    }
+
+    // MARK: - File Import
 
     private func handleFileImport(_ result: Result<[URL], Error>) {
         switch result {
@@ -123,14 +169,7 @@ struct DecksView: View {
         }
     }
 
-    // MARK: - Delete Handling
-
-    private func confirmDelete(at offsets: IndexSet) {
-        if let index = offsets.first {
-            deckToDelete = decks[index]
-            showDeleteConfirmation = true
-        }
-    }
+    // MARK: - Delete
 
     private func deleteDeck(_ deck: Deck, deleteEntries: Bool) {
         let service = DeckService(modelContext: modelContext)
@@ -143,70 +182,106 @@ struct DecksView: View {
     }
 }
 
-// MARK: - Empty State
+// MARK: - Category Tab Bar
 
-struct EmptyDecksView: View {
-    let onImport: () -> Void
+struct CategoryTabBar: View {
+    @Binding var selectedCategory: DeckCategory
 
     var body: some View {
-        VStack(spacing: AppTheme.Spacing.lg) {
-            Image(systemName: "square.stack.3d.up")
-                .font(.system(size: 64, weight: .medium))
-                .foregroundStyle(
-                    Color.adaptive(
-                        light: AppTheme.Colors.Fallback.textTertiaryLight,
-                        dark: AppTheme.Colors.Fallback.textTertiaryDark
-                    )
-                )
-
-            VStack(spacing: AppTheme.Spacing.xs) {
-                Text("No Decks Installed")
-                    .font(AppTheme.Typography.headline)
-                    .foregroundStyle(
-                        Color.adaptive(
-                            light: AppTheme.Colors.Fallback.textPrimaryLight,
-                            dark: AppTheme.Colors.Fallback.textPrimaryDark
-                        )
-                    )
-
-                Text("Import JSON deck files to add vocabulary sets")
-                    .font(AppTheme.Typography.subheadline)
-                    .foregroundStyle(
-                        Color.adaptive(
-                            light: AppTheme.Colors.Fallback.textSecondaryLight,
-                            dark: AppTheme.Colors.Fallback.textSecondaryDark
-                        )
-                    )
-                    .multilineTextAlignment(.center)
-            }
-
-            Button {
-                onImport()
-            } label: {
-                HStack {
-                    Image(systemName: "square.and.arrow.down")
-                    Text("Import Deck")
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                ForEach(DeckCategory.allCases) { category in
+                    CategoryTab(
+                        title: category.rawValue,
+                        isSelected: selectedCategory == category
+                    ) {
+                        withAnimation(AppTheme.Animation.standard) {
+                            selectedCategory = category
+                        }
+                    }
                 }
-                .font(AppTheme.Typography.headline)
-                .foregroundStyle(.white)
-                .padding(.horizontal, AppTheme.Spacing.xl)
-                .padding(.vertical, AppTheme.Spacing.md)
-                .background(
-                    Color.adaptive(
-                        light: AppTheme.Colors.Fallback.primaryLight,
-                        dark: AppTheme.Colors.Fallback.primaryDark
-                    )
-                )
-                .clipShape(Capsule())
             }
+            .padding(.horizontal, AppTheme.Spacing.md)
+            .padding(.vertical, AppTheme.Spacing.sm)
         }
-        .padding(AppTheme.Spacing.xl)
+        .background(
+            Color.adaptive(
+                light: AppTheme.Colors.Fallback.surfaceLight,
+                dark: AppTheme.Colors.Fallback.surfaceDark
+            )
+        )
     }
 }
 
-// MARK: - Deck Row
+struct CategoryTab: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
 
-struct DeckRowView: View {
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(AppTheme.Typography.callout)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .foregroundStyle(
+                    isSelected
+                        ? Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        )
+                        : Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                        )
+                )
+                .padding(.horizontal, AppTheme.Spacing.md)
+                .padding(.vertical, AppTheme.Spacing.xs)
+                .background(
+                    isSelected
+                        ? Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        ).opacity(0.1)
+                        : Color.clear
+                )
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - My Decks Section
+
+struct MyDecksSection: View {
+    let installedDecks: [Deck]
+    let onImport: () -> Void
+    let onDelete: (Deck) -> Void
+
+    var body: some View {
+        if installedDecks.isEmpty {
+            EmptyDecksView(onImport: onImport)
+        } else {
+            List {
+                ForEach(installedDecks) { deck in
+                    NavigationLink(destination: DeckDetailView(deck: deck)) {
+                        InstalledDeckRow(deck: deck)
+                    }
+                }
+                .onDelete { indexSet in
+                    if let index = indexSet.first {
+                        onDelete(installedDecks[index])
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+        }
+    }
+}
+
+// MARK: - Installed Deck Row
+
+struct InstalledDeckRow: View {
     let deck: Deck
     @Environment(\.modelContext) private var modelContext
 
@@ -280,6 +355,367 @@ struct DeckRowView: View {
     private func loadStats() {
         let service = DeckService(modelContext: modelContext)
         stats = try? service.getStats(for: deck)
+    }
+}
+
+// MARK: - Catalog Decks Section
+
+struct CatalogDecksSection: View {
+    let category: DeckCategory
+    let installedDeckIDs: Set<String>
+    let onLoad: (CatalogDeck) -> Void
+    let onUnload: (CatalogDeck) -> Void
+
+    @StateObject private var catalog = DeckCatalog.shared
+
+    private var decks: [CatalogDeck] {
+        catalog.decks(for: category)
+    }
+
+    var body: some View {
+        if decks.isEmpty {
+            EmptyCategoryView(category: category)
+        } else {
+            ScrollView {
+                LazyVStack(spacing: AppTheme.Spacing.md) {
+                    ForEach(decks) { deck in
+                        CatalogDeckCard(
+                            deck: deck,
+                            isInstalled: installedDeckIDs.contains(deck.id),
+                            onLoad: { onLoad(deck) },
+                            onUnload: { onUnload(deck) }
+                        )
+                    }
+                }
+                .padding(AppTheme.Spacing.md)
+            }
+        }
+    }
+}
+
+// MARK: - Catalog Deck Card
+
+struct CatalogDeckCard: View {
+    let deck: CatalogDeck
+    let isInstalled: Bool
+    let onLoad: () -> Void
+    let onUnload: () -> Void
+
+    @State private var showUnloadConfirmation = false
+    @State private var isLoading = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            // Header
+            HStack(spacing: AppTheme.Spacing.md) {
+                // Icon
+                Image(systemName: deck.imageSystemName)
+                    .font(.system(size: 32, weight: .medium))
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        )
+                    )
+                    .frame(width: 48, height: 48)
+                    .background(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        ).opacity(0.1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
+
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                    Text(deck.name)
+                        .font(AppTheme.Typography.headline)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textPrimaryLight,
+                                dark: AppTheme.Colors.Fallback.textPrimaryDark
+                            )
+                        )
+
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Label("\(deck.entryCount) cards", systemImage: "rectangle.stack")
+                        Text("by \(deck.author)")
+                    }
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                        )
+                    )
+                }
+
+                Spacer()
+
+                // Status badge
+                if isInstalled {
+                    Text("Installed")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AppTheme.Colors.Fallback.success)
+                        .padding(.horizontal, AppTheme.Spacing.sm)
+                        .padding(.vertical, AppTheme.Spacing.xxs)
+                        .background(AppTheme.Colors.Fallback.success.opacity(0.1))
+                        .clipShape(Capsule())
+                }
+            }
+
+            // Description
+            Text(deck.description)
+                .font(AppTheme.Typography.body)
+                .foregroundStyle(
+                    Color.adaptive(
+                        light: AppTheme.Colors.Fallback.textSecondaryLight,
+                        dark: AppTheme.Colors.Fallback.textSecondaryDark
+                    )
+                )
+                .lineLimit(3)
+
+            // Tags
+            if !deck.tags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: AppTheme.Spacing.xs) {
+                        ForEach(deck.tags, id: \.self) { tag in
+                            Text(tag)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(
+                                    Color.adaptive(
+                                        light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                        dark: AppTheme.Colors.Fallback.textSecondaryDark
+                                    )
+                                )
+                                .padding(.horizontal, AppTheme.Spacing.sm)
+                                .padding(.vertical, AppTheme.Spacing.xxs)
+                                .background(
+                                    Color.adaptive(
+                                        light: AppTheme.Colors.Fallback.surfaceElevatedLight,
+                                        dark: AppTheme.Colors.Fallback.surfaceElevatedDark
+                                    )
+                                )
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+            }
+
+            // Action button
+            HStack(spacing: AppTheme.Spacing.sm) {
+                if isInstalled {
+                    Button {
+                        showUnloadConfirmation = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "trash")
+                            Text("Unload")
+                        }
+                        .font(AppTheme.Typography.callout)
+                        .foregroundStyle(AppTheme.Colors.Fallback.error)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, AppTheme.Spacing.sm)
+                        .background(AppTheme.Colors.Fallback.error.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
+                    }
+                } else {
+                    Button {
+                        isLoading = true
+                        onLoad()
+                        // Note: isLoading will be reset when the view updates
+                    } label: {
+                        HStack {
+                            if isLoading {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "arrow.down.circle")
+                            }
+                            Text("Load Deck")
+                        }
+                        .font(AppTheme.Typography.callout)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, AppTheme.Spacing.sm)
+                        .background(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.primaryLight,
+                                dark: AppTheme.Colors.Fallback.primaryDark
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
+                    }
+                    .disabled(isLoading)
+                }
+            }
+        }
+        .padding(AppTheme.Spacing.lg)
+        .background(
+            Color.adaptive(
+                light: AppTheme.Colors.Fallback.surfaceLight,
+                dark: AppTheme.Colors.Fallback.surfaceDark
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
+        .shadow(
+            color: .black.opacity(0.05),
+            radius: 8,
+            x: 0,
+            y: 2
+        )
+        .onChange(of: isInstalled) { _, newValue in
+            if newValue {
+                isLoading = false
+            }
+        }
+        .confirmationDialog("Unload Deck?", isPresented: $showUnloadConfirmation, titleVisibility: .visible) {
+            Button("Unload & Delete Entries", role: .destructive) {
+                onUnload()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will remove the deck and all its entries from your library. You can reload it at any time.")
+        }
+    }
+}
+
+// MARK: - Empty State Views
+
+struct EmptyDecksView: View {
+    let onImport: () -> Void
+
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            Image(systemName: "square.stack.3d.up")
+                .font(.system(size: 64, weight: .medium))
+                .foregroundStyle(
+                    Color.adaptive(
+                        light: AppTheme.Colors.Fallback.textTertiaryLight,
+                        dark: AppTheme.Colors.Fallback.textTertiaryDark
+                    )
+                )
+
+            VStack(spacing: AppTheme.Spacing.xs) {
+                Text("No Decks Loaded")
+                    .font(AppTheme.Typography.headline)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        )
+                    )
+
+                Text("Browse the Jouzu or Textbooks tabs to load a deck, or import your own JSON file")
+                    .font(AppTheme.Typography.subheadline)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                        )
+                    )
+                    .multilineTextAlignment(.center)
+            }
+
+            Button {
+                onImport()
+            } label: {
+                HStack {
+                    Image(systemName: "square.and.arrow.down")
+                    Text("Import JSON File")
+                }
+                .font(AppTheme.Typography.headline)
+                .foregroundStyle(.white)
+                .padding(.horizontal, AppTheme.Spacing.xl)
+                .padding(.vertical, AppTheme.Spacing.md)
+                .background(
+                    Color.adaptive(
+                        light: AppTheme.Colors.Fallback.primaryLight,
+                        dark: AppTheme.Colors.Fallback.primaryDark
+                    )
+                )
+                .clipShape(Capsule())
+            }
+        }
+        .padding(AppTheme.Spacing.xl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct EmptyCategoryView: View {
+    let category: DeckCategory
+
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            Image(systemName: category.icon)
+                .font(.system(size: 64, weight: .medium))
+                .foregroundStyle(
+                    Color.adaptive(
+                        light: AppTheme.Colors.Fallback.textTertiaryLight,
+                        dark: AppTheme.Colors.Fallback.textTertiaryDark
+                    )
+                )
+
+            VStack(spacing: AppTheme.Spacing.xs) {
+                Text("No \(category.rawValue) Available")
+                    .font(AppTheme.Typography.headline)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        )
+                    )
+
+                Text("Check back later for new content")
+                    .font(AppTheme.Typography.subheadline)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                        )
+                    )
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Community Decks Section (Placeholder)
+
+struct CommunityDecksSection: View {
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            Image(systemName: "person.3.fill")
+                .font(.system(size: 64, weight: .medium))
+                .foregroundStyle(
+                    Color.adaptive(
+                        light: AppTheme.Colors.Fallback.textTertiaryLight,
+                        dark: AppTheme.Colors.Fallback.textTertiaryDark
+                    )
+                )
+
+            VStack(spacing: AppTheme.Spacing.xs) {
+                Text("Community Decks")
+                    .font(AppTheme.Typography.headline)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        )
+                    )
+
+                Text("Coming soon! User-created decks will be available here.")
+                    .font(AppTheme.Typography.subheadline)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                        )
+                    )
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(AppTheme.Spacing.xl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

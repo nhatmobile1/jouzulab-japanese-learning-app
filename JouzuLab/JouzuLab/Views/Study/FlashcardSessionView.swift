@@ -6,22 +6,43 @@ struct FlashcardSessionView: View {
     @Environment(\.dismiss) private var dismiss
 
     let initialQueue: [Entry]
+    let resumeState: PersistedSessionState?
     let onSessionComplete: (SessionStats) -> Void
 
     @State private var cardQueue: [Entry]
     @State private var currentIndex: Int = 0
     @State private var isFlipped: Bool = false
     @State private var sessionStats: SessionStats
+    @State private var sessionStartTime: Date = Date()
+    @State private var showEndSessionAlert: Bool = false
+    @State private var showSessionMenu: Bool = false
+    @State private var deckNameCache: [String: String] = [:]
 
     @StateObject private var audioService = AudioService.shared
+    @Query private var decks: [Deck]
 
     private let srsService = SRSService.shared
+    private let streakService = StreakService.shared
+    private let sessionManager = StudySessionManager.shared
 
-    init(initialQueue: [Entry], onSessionComplete: @escaping (SessionStats) -> Void) {
+    init(
+        initialQueue: [Entry],
+        resumeState: PersistedSessionState? = nil,
+        onSessionComplete: @escaping (SessionStats) -> Void
+    ) {
         self.initialQueue = initialQueue
+        self.resumeState = resumeState
         self.onSessionComplete = onSessionComplete
         _cardQueue = State(initialValue: initialQueue)
-        _sessionStats = State(initialValue: SessionStats())
+
+        // Restore state if resuming
+        if let state = resumeState {
+            _currentIndex = State(initialValue: state.currentIndex)
+            _sessionStats = State(initialValue: state.toSessionStats())
+            _sessionStartTime = State(initialValue: state.sessionStartTime)
+        } else {
+            _sessionStats = State(initialValue: SessionStats())
+        }
     }
 
     private var currentEntry: Entry? {
@@ -34,20 +55,105 @@ struct FlashcardSessionView: View {
         return Double(sessionStats.cardsReviewed) / Double(cardQueue.count + sessionStats.cardsReviewed)
     }
 
+    private var cardsRemaining: Int {
+        cardQueue.count - currentIndex
+    }
+
+    private var currentAccuracy: Double {
+        sessionStats.accuracy
+    }
+
+    /// Get the deck name for an entry
+    private func deckName(for entry: Entry) -> String? {
+        guard let deckId = entry.deckId else { return nil }
+
+        // Check cache first
+        if let cached = deckNameCache[deckId] {
+            return cached
+        }
+
+        // Look up deck
+        if let deck = decks.first(where: { $0.id == deckId }) {
+            // We can't mutate state here directly, so return the name
+            return deck.name
+        }
+
+        return nil
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Progress header
+            // Enhanced Progress header
             SessionProgressHeader(
-                cardsRemaining: cardQueue.count - currentIndex,
+                currentCardNumber: sessionStats.cardsReviewed + 1,
+                totalCards: initialQueue.count,
+                cardsRemaining: cardsRemaining,
                 totalReviewed: sessionStats.cardsReviewed,
+                accuracy: currentAccuracy,
                 progress: progress,
-                onClose: { dismiss() }
+                onClose: {
+                    if sessionStats.cardsReviewed > 0 {
+                        showEndSessionAlert = true
+                    } else {
+                        dismiss()
+                    }
+                },
+                onMenuTap: { showSessionMenu = true }
             )
 
-            if let entry = currentEntry {
+            if initialQueue.isEmpty {
+                // No cards to study - should not normally happen
+                VStack(spacing: AppTheme.Spacing.lg) {
+                    Image(systemName: "rectangle.stack.badge.minus")
+                        .font(.system(size: 64))
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textTertiaryLight,
+                                dark: AppTheme.Colors.Fallback.textTertiaryDark
+                            )
+                        )
+
+                    Text("No Cards Available")
+                        .font(AppTheme.Typography.title)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textPrimaryLight,
+                                dark: AppTheme.Colors.Fallback.textPrimaryDark
+                            )
+                        )
+
+                    Text("There are no cards ready for study. Try adjusting your filters or add more entries.")
+                        .font(AppTheme.Typography.body)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                dark: AppTheme.Colors.Fallback.textSecondaryDark
+                            )
+                        )
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, AppTheme.Spacing.xl)
+
+                    Button("Go Back") {
+                        dismiss()
+                    }
+                    .font(AppTheme.Typography.headline)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, AppTheme.Spacing.xl)
+                    .padding(.vertical, AppTheme.Spacing.md)
+                    .background(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        )
+                    )
+                    .clipShape(Capsule())
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let entry = currentEntry {
                 // Flashcard
                 FlashcardView(
                     entry: entry,
+                    deckName: deckName(for: entry),
                     isFlipped: $isFlipped,
                     audioService: audioService
                 )
@@ -81,6 +187,7 @@ struct FlashcardSessionView: View {
                         )
 
                     Button("View Summary") {
+                        recordSessionToStreak()
                         onSessionComplete(sessionStats)
                     }
                     .font(AppTheme.Typography.headline)
@@ -113,6 +220,65 @@ struct FlashcardSessionView: View {
             .ignoresSafeArea()
         )
         .animation(AppTheme.Animation.standard, value: isFlipped)
+        .alert("Pause Session?", isPresented: $showEndSessionAlert) {
+            Button("Continue Studying", role: .cancel) { }
+            Button("Pause & Save Progress") {
+                saveSessionAndExit()
+            }
+            Button("End Session") {
+                recordSessionToStreak()
+                onSessionComplete(sessionStats)
+            }
+        } message: {
+            Text("You've reviewed \(sessionStats.cardsReviewed) cards with \(cardsRemaining) remaining.")
+        }
+        .confirmationDialog("Session Options", isPresented: $showSessionMenu, titleVisibility: .visible) {
+            Button("Restart Session") {
+                restartSession()
+            }
+            Button("Pause & Exit") {
+                saveSessionAndExit()
+            }
+            Button("End & Complete Session") {
+                recordSessionToStreak()
+                onSessionComplete(sessionStats)
+            }
+            Button("Cancel", role: .cancel) { }
+        }
+    }
+
+    // MARK: - Session Control
+
+    private func restartSession() {
+        cardQueue = initialQueue
+        currentIndex = 0
+        sessionStats = SessionStats()
+        sessionStartTime = Date()
+        isFlipped = false
+        sessionManager.clearSession()
+    }
+
+    private func saveSessionAndExit() {
+        // Save current session state
+        let entryIDs = cardQueue.map { $0.id }
+        sessionManager.saveSession(
+            entryIDs: entryIDs,
+            currentIndex: currentIndex,
+            stats: sessionStats,
+            sessionStartTime: sessionStartTime
+        )
+
+        // Record partial progress to streak
+        if sessionStats.cardsReviewed > 0 {
+            let duration = Date().timeIntervalSince(sessionStartTime)
+            streakService.recordStudySession(
+                cardsReviewed: sessionStats.cardsReviewed,
+                correctCount: sessionStats.correctCount,
+                duration: duration
+            )
+        }
+
+        dismiss()
     }
 
     // MARK: - Grade Handling
@@ -144,6 +310,17 @@ struct FlashcardSessionView: View {
             currentIndex += 1
         }
     }
+
+    // MARK: - Streak Recording
+
+    private func recordSessionToStreak() {
+        let duration = Date().timeIntervalSince(sessionStartTime)
+        streakService.recordStudySession(
+            cardsReviewed: sessionStats.cardsReviewed,
+            correctCount: sessionStats.correctCount,
+            duration: duration
+        )
+    }
 }
 
 // MARK: - Session Stats
@@ -162,13 +339,18 @@ struct SessionStats {
 // MARK: - Progress Header
 
 struct SessionProgressHeader: View {
+    let currentCardNumber: Int
+    let totalCards: Int
     let cardsRemaining: Int
     let totalReviewed: Int
+    let accuracy: Double
     let progress: Double
     let onClose: () -> Void
+    let onMenuTap: () -> Void
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.sm) {
+            // Top row: close button, card counter, menu button
             HStack {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
@@ -184,26 +366,71 @@ struct SessionProgressHeader: View {
 
                 Spacer()
 
-                Text("\(cardsRemaining) remaining")
-                    .font(AppTheme.Typography.callout)
+                // Card counter
+                Text("Card \(min(currentCardNumber, totalCards)) of \(totalCards)")
+                    .font(AppTheme.Typography.headline)
                     .foregroundStyle(
                         Color.adaptive(
-                            light: AppTheme.Colors.Fallback.textSecondaryLight,
-                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
                         )
                     )
 
                 Spacer()
 
-                Text("\(totalReviewed) done")
-                    .font(AppTheme.Typography.callout)
-                    .foregroundStyle(
-                        Color.adaptive(
-                            light: AppTheme.Colors.Fallback.primaryLight,
-                            dark: AppTheme.Colors.Fallback.primaryDark
+                Button(action: onMenuTap) {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                dark: AppTheme.Colors.Fallback.textSecondaryDark
+                            )
                         )
+                        .frame(width: 32, height: 32)
+                }
+            }
+
+            // Stats row
+            HStack(spacing: AppTheme.Spacing.lg) {
+                // Remaining
+                HStack(spacing: AppTheme.Spacing.xxs) {
+                    Image(systemName: "rectangle.stack")
+                        .font(.system(size: 12))
+                    Text("\(cardsRemaining) left")
+                        .font(AppTheme.Typography.caption)
+                }
+                .foregroundStyle(
+                    Color.adaptive(
+                        light: AppTheme.Colors.Fallback.textSecondaryLight,
+                        dark: AppTheme.Colors.Fallback.textSecondaryDark
                     )
-                    .frame(width: 80, alignment: .trailing)
+                )
+
+                // Reviewed
+                HStack(spacing: AppTheme.Spacing.xxs) {
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 12))
+                    Text("\(totalReviewed) done")
+                        .font(AppTheme.Typography.caption)
+                }
+                .foregroundStyle(
+                    Color.adaptive(
+                        light: AppTheme.Colors.Fallback.primaryLight,
+                        dark: AppTheme.Colors.Fallback.primaryDark
+                    )
+                )
+
+                // Accuracy (only show if reviewed > 0)
+                if totalReviewed > 0 {
+                    HStack(spacing: AppTheme.Spacing.xxs) {
+                        Image(systemName: "target")
+                            .font(.system(size: 12))
+                        Text("\(Int(accuracy * 100))%")
+                            .font(AppTheme.Typography.caption)
+                    }
+                    .foregroundStyle(accuracyColor)
+                }
             }
 
             // Progress bar
@@ -241,6 +468,16 @@ struct SessionProgressHeader: View {
                 dark: AppTheme.Colors.Fallback.surfaceDark
             )
         )
+    }
+
+    private var accuracyColor: Color {
+        if accuracy >= 0.8 {
+            return AppTheme.Colors.Fallback.success
+        } else if accuracy >= 0.6 {
+            return AppTheme.Colors.Fallback.warning
+        } else {
+            return AppTheme.Colors.Fallback.error
+        }
     }
 }
 
@@ -301,8 +538,11 @@ struct SpeedControlBar: View {
     let entry1 = Entry(id: "1", japanese: "漢字", reading: "かんじ", english: "Chinese characters")
     let entry2 = Entry(id: "2", japanese: "勉強", reading: "べんきょう", english: "Study")
 
-    return FlashcardSessionView(initialQueue: [entry1, entry2]) { stats in
-        print("Session complete: \(stats.cardsReviewed) cards")
-    }
+    return FlashcardSessionView(
+        initialQueue: [entry1, entry2],
+        onSessionComplete: { stats in
+            print("Session complete: \(stats.cardsReviewed) cards")
+        }
+    )
     .modelContainer(for: Entry.self, inMemory: true)
 }

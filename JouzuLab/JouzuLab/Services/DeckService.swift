@@ -79,11 +79,23 @@ class DeckService: ObservableObject {
 
         var importedCount = 0
         var skippedCount = 0
+        var incompleteCount = 0
         var newEntryIDs: [String] = deck.entryIDs
 
+        // Filter to only include complete entries (has japanese, reading, and english)
+        let completeEntries = deckJSON.entries.filter { entry in
+            guard !entry.japanese.isEmpty else { return false }
+            guard let reading = entry.reading, !reading.isEmpty else { return false }
+            guard let english = entry.english, !english.isEmpty else { return false }
+            return true
+        }
+        incompleteCount = deckJSON.entries.count - completeEntries.count
+
         // Import entries
-        for (index, entryJSON) in deckJSON.entries.enumerated() {
+        for (index, entryJSON) in completeEntries.enumerated() {
             let entry = entryJSON.toEntry(deckId: deckID, index: index)
+            // Ensure deckId is set on the entry
+            entry.deckId = deckID
 
             if !existingIDs.contains(entry.id) {
                 modelContext.insert(entry)
@@ -94,8 +106,16 @@ class DeckService: ObservableObject {
                 if !newEntryIDs.contains(entry.id) {
                     newEntryIDs.append(entry.id)
                 }
+                // Update deckId for existing entry if needed
+                if let existingEntry = existingEntries.first(where: { $0.id == entry.id }) {
+                    existingEntry.deckId = deckID
+                }
                 skippedCount += 1
             }
+        }
+
+        if incompleteCount > 0 {
+            print("Skipped \(incompleteCount) incomplete entries (missing reading or english)")
         }
 
         // Update deck metadata
@@ -155,6 +175,89 @@ class DeckService: ObservableObject {
         let descriptor = FetchDescriptor<Entry>()
         let allEntries = try modelContext.fetch(descriptor)
         return allEntries.filter { entryIDs.contains($0.id) }
+    }
+
+    // MARK: - Get Entries Grouped by Lesson
+
+    func getEntriesGroupedByLesson(for deck: Deck) throws -> [(lesson: String, entries: [Entry])] {
+        let entries = try getEntries(for: deck)
+
+        // Group by lesson field first, then by lessonDate as fallback
+        var lessonGroups: [String: [Entry]] = [:]
+        var ungroupedEntries: [Entry] = []
+
+        for entry in entries {
+            if let lesson = entry.lesson, !lesson.isEmpty {
+                // Use explicit lesson field (e.g., "L1", "会G")
+                lessonGroups[lesson, default: []].append(entry)
+            } else if let lessonDate = entry.lessonDate, !lessonDate.isEmpty {
+                // Use lesson date for entries like italki notes (format as "Month Year")
+                let formattedDate = formatLessonDateForGrouping(lessonDate)
+                lessonGroups[formattedDate, default: []].append(entry)
+            } else {
+                ungroupedEntries.append(entry)
+            }
+        }
+
+        // Determine if we should sort by date or naturally
+        let hasDateGroups = lessonGroups.keys.contains { $0.contains(" ") && ($0.contains("20") || $0.contains("19")) }
+
+        var result: [(lesson: String, entries: [Entry])]
+
+        if hasDateGroups {
+            // Sort date-based groups chronologically (newest first)
+            result = lessonGroups
+                .sorted { lhs, rhs in
+                    // Parse "Month Year" format for date comparison
+                    let date1 = parseLessonGroupDate(lhs.key)
+                    let date2 = parseLessonGroupDate(rhs.key)
+                    if let d1 = date1, let d2 = date2 {
+                        return d1 > d2  // Newest first
+                    }
+                    return lhs.key > rhs.key
+                }
+                .map { (lesson: $0.key, entries: $0.value.sorted { ($0.lessonDate ?? "") > ($1.lessonDate ?? "") }) }
+        } else {
+            // Sort lessons naturally (e.g., L1, L2, L10 instead of L1, L10, L2)
+            result = lessonGroups
+                .sorted { lhs, rhs in
+                    // Extract numeric portion for natural sorting
+                    let num1 = lhs.key.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+                    let num2 = rhs.key.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+                    if let n1 = Int(num1), let n2 = Int(num2) {
+                        return n1 < n2
+                    }
+                    return lhs.key < rhs.key
+                }
+                .map { (lesson: $0.key, entries: $0.value) }
+        }
+
+        // Add ungrouped entries at the end
+        if !ungroupedEntries.isEmpty {
+            result.append((lesson: "Other", entries: ungroupedEntries))
+        }
+
+        return result
+    }
+
+    /// Format a lesson date (YYYY-MM-DD) into a group name (e.g., "January 2024")
+    private func formatLessonDateForGrouping(_ dateString: String) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        if let date = formatter.date(from: dateString) {
+            let outputFormatter = DateFormatter()
+            outputFormatter.dateFormat = "MMMM yyyy"
+            return outputFormatter.string(from: date)
+        }
+        return dateString
+    }
+
+    /// Parse a group name like "January 2024" back to a Date for sorting
+    private func parseLessonGroupDate(_ groupName: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.date(from: groupName)
     }
 
     // MARK: - Deck Stats
