@@ -92,12 +92,24 @@ class DeckCatalog: ObservableObject {
                 id: "genki_3rd",
                 name: "Genki 3rd Edition",
                 description: "Complete vocabulary from Genki I & II textbooks, organized by lesson",
-                author: "JouzuLab",
+                author: "The Japan Times Publishing, Ltd.",
                 category: .textbooks,
                 entryCount: 1774,
                 bundleFileName: "genki_deck",
                 imageSystemName: "book.fill",
                 tags: ["genki", "textbook", "N5", "N4", "beginner"]
+            ),
+
+            CatalogDeck(
+                id: "quartet-1",
+                name: "QUARTET I Vocabulary",
+                description: "1,537 intermediate vocabulary from QUARTET I textbook (L1-L12), organized by lesson and reading section",
+                author: "The Japan Times Publishing, Ltd.",
+                category: .textbooks,
+                entryCount: 1537,
+                bundleFileName: "quartet_1_deck",
+                imageSystemName: "book.fill",
+                tags: ["quartet", "textbook", "N3", "intermediate"]
             ),
 
             // Community Decks (Placeholder for future)

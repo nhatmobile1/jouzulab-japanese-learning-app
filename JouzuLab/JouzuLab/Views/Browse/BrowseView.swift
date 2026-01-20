@@ -6,11 +6,14 @@ import SwiftData
 struct BrowseView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var allEntries: [Entry]
-    @Query(sort: \Deck.installedDate, order: .reverse) private var decks: [Deck]
+    @Query(
+        filter: #Predicate<Deck> { $0.entryCount > 0 },
+        sort: \Deck.installedDate,
+        order: .reverse
+    ) private var decks: [Deck]
 
     @State private var filterState = BrowseFilterState()
     @State private var availableFilters: [FilterType: [FilterOption]] = [:]
-    @State private var showSideMenu = false
 
     private var filteredEntries: [Entry] {
         let provider = FilterDataProvider(modelContext: modelContext)
@@ -19,55 +22,35 @@ struct BrowseView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                VStack(spacing: 0) {
-                    // App Header
-                    AppHeader(
-                        title: "Browse",
-                        subtitle: "\(filteredEntries.count) entries",
-                        onMenuTap: {
-                            withAnimation(AppTheme.Animation.standard) {
-                                showSideMenu = true
-                            }
-                        },
-                        onProfileTap: {
-                            // TODO: Navigate to profile
-                        }
-                    )
+            VStack(spacing: 0) {
+                // Search bar
+                SearchBarView(text: $filterState.searchText)
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .padding(.vertical, AppTheme.Spacing.xs)
 
-                    // Search bar
-                    SearchBarView(text: $filterState.searchText)
-                        .padding(.horizontal, AppTheme.Spacing.md)
-                        .padding(.vertical, AppTheme.Spacing.xs)
-
-                    // Filter bar
-                    FilterBarView(
-                        filterState: filterState,
-                        availableFilters: availableFilters,
-                        decks: decks
-                    )
-
-                    // Content
-                    if filteredEntries.isEmpty {
-                        emptyStateView
-                    } else {
-                        entryListView
-                    }
-                }
-                .background(
-                    Color.adaptive(
-                        light: AppTheme.Colors.Fallback.backgroundLight,
-                        dark: AppTheme.Colors.Fallback.backgroundDark
-                    )
-                    .ignoresSafeArea()
+                // Filter bar
+                FilterBarView(
+                    filterState: filterState,
+                    availableFilters: availableFilters,
+                    decks: decks
                 )
 
-                // Side Menu Overlay
-                SideMenu(isPresented: $showSideMenu) { item in
-                    print("Navigate to: \(item.rawValue)")
+                // Content
+                if filteredEntries.isEmpty {
+                    emptyStateView
+                } else {
+                    entryListView
                 }
             }
-            .navigationBarHidden(true)
+            .background(
+                Color.adaptive(
+                    light: AppTheme.Colors.Fallback.backgroundLight,
+                    dark: AppTheme.Colors.Fallback.backgroundDark
+                )
+                .ignoresSafeArea()
+            )
+            .navigationTitle("Browse")
+            .navigationBarTitleDisplayMode(.large)
             .task {
                 updateAvailableFilters()
             }

@@ -41,6 +41,7 @@
 		FABE76D12F1C43CC0020F4E7 /* StudySessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FABE76D02F1C43CC0020F4E7 /* StudySessionManager.swift */; };
 		FABE76D32F1C50000020F4E7 /* DeckCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FABE76D22F1C50000020F4E7 /* DeckCatalog.swift */; };
 		FABE76D52F1C50100020F4E7 /* genki_deck.json in Resources */ = {isa = PBXBuildFile; fileRef = FABE76D42F1C50100020F4E7 /* genki_deck.json */; };
+		FABE76D52F1F47CD0020F4E7 /* quartet_1_deck.json in Resources */ = {isa = PBXBuildFile; fileRef = FABE76D42F1F47CD0020F4E7 /* quartet_1_deck.json */; };
 		FABE76D72F1C52200020F4E7 /* DeckService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FABE76D62F1C52200020F4E7 /* DeckService.swift */; };
 /* End PBXBuildFile section */
 
@@ -80,6 +81,7 @@
 		FABE76D02F1C43CC0020F4E7 /* StudySessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudySessionManager.swift; sourceTree = "<group>"; };
 		FABE76D22F1C50000020F4E7 /* DeckCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckCatalog.swift; sourceTree = "<group>"; };
 		FABE76D42F1C50100020F4E7 /* genki_deck.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = genki_deck.json; sourceTree = "<group>"; };
+		FABE76D42F1F47CD0020F4E7 /* quartet_1_deck.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = quartet_1_deck.json; sourceTree = "<group>"; };
 		FABE76D62F1C52200020F4E7 /* DeckService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -179,6 +181,7 @@
 		A5000009 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				FABE76D42F1F47CD0020F4E7 /* quartet_1_deck.json */,
 				A2000009 /* japanese_data.json */,
 				FABE76D42F1C50100020F4E7 /* genki_deck.json */,
 				A2000010 /* Assets.xcassets */,
@@ -309,6 +312,7 @@
 				A1000009 /* japanese_data.json in Resources */,
 				FABE76D52F1C50100020F4E7 /* genki_deck.json in Resources */,
 				A1000010 /* Assets.xcassets in Resources */,
+				FABE76D52F1F47CD0020F4E7 /* quartet_1_deck.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

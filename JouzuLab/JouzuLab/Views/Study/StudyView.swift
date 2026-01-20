@@ -1,17 +1,23 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Session Data for Item-based Presentation
+
+struct FlashcardSessionData: Identifiable {
+    let id = UUID()
+    let entries: [Entry]
+    let resumeState: PersistedSessionState?
+}
+
 struct StudyView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var allEntries: [Entry]
     @State private var showSideMenu = false
     @State private var showSessionConfig = false
-    @State private var showFlashcardSession = false
+    @State private var activeSession: FlashcardSessionData? = nil  // Changed to item-based
     @State private var showSessionSummary = false
-    @State private var sessionQueue: [Entry] = []
     @State private var lastSessionStats: SessionStats?
     @State private var isResumingSession = false
-    @State private var resumeSessionState: PersistedSessionState?
 
     @StateObject private var streakService = StreakService.shared
     @StateObject private var sessionManager = StudySessionManager.shared
@@ -357,18 +363,18 @@ struct StudyView: View {
             }
         }
         .sheet(isPresented: $showSessionConfig) {
-            SessionConfigView { newCardLimit, jlptFilter, deck in
-                startSession(newCardLimit: newCardLimit, jlptFilter: jlptFilter, deck: deck)
+            SessionConfigView { entries, newCardLimit in
+                startSession(entries: entries, newCardLimit: newCardLimit)
             }
         }
-        .fullScreenCover(isPresented: $showFlashcardSession) {
+        .fullScreenCover(item: $activeSession) { sessionData in
             FlashcardSessionView(
-                initialQueue: sessionQueue,
-                resumeState: resumeSessionState,
+                initialQueue: sessionData.entries,
+                resumeState: sessionData.resumeState,
                 onSessionComplete: { stats in
                     lastSessionStats = stats
                     sessionManager.clearSession()
-                    showFlashcardSession = false
+                    activeSession = nil
                     showSessionSummary = true
                 }
             )
@@ -391,38 +397,34 @@ struct StudyView: View {
 
     // MARK: - Session Management
 
-    private func startSession(newCardLimit: Int, jlptFilter: String?, deck: Deck?) {
-        // Only include complete entries (have Japanese, reading, AND English)
-        var entriesToStudy = allEntries.filter { $0.isComplete }
-
-        // Apply deck filter if selected
-        if let deck = deck {
-            let deckEntryIDs = Set(deck.entryIDs)
-            entriesToStudy = entriesToStudy.filter { deckEntryIDs.contains($0.id) }
+    private func startSession(entries: [Entry], newCardLimit: Int) {
+        // Safety check: don't start session with no entries
+        guard !entries.isEmpty else {
+            print("[StudyView] startSession called with empty entries array - aborting")
+            showSessionConfig = false
+            return
         }
 
-        // Apply JLPT filter if selected
-        if let jlpt = jlptFilter {
-            entriesToStudy = entriesToStudy.filter { $0.jlptLevel == jlpt }
-        }
-
-        // Build study queue
-        sessionQueue = srsService.buildStudyQueue(
-            from: entriesToStudy,
+        // Build study queue from the entries passed by SessionConfigView
+        // (already filtered by deck, JLPT, and completeness)
+        let queue = srsService.buildStudyQueue(
+            from: entries,
             newCardLimit: newCardLimit
         )
 
-        // Clear any previous resume state (this is a new session)
-        resumeSessionState = nil
+        print("[StudyView] Built session queue: \(queue.count) cards from \(entries.count) entries")
 
         showSessionConfig = false
 
         // Only show flashcard session if we have cards to study
         // Use a small delay to ensure the sheet dismissal animation completes
-        if !sessionQueue.isEmpty {
+        if !queue.isEmpty {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                showFlashcardSession = true
+                // Create session data with the queue - this ensures entries are captured NOW
+                activeSession = FlashcardSessionData(entries: queue, resumeState: nil)
             }
+        } else {
+            print("[StudyView] Session queue is empty - not showing flashcard session")
         }
     }
 
@@ -430,11 +432,10 @@ struct StudyView: View {
         guard let state = sessionManager.loadSession() else { return }
 
         // Restore entries from saved IDs
-        sessionQueue = sessionManager.restoreEntries(from: state, allEntries: allEntries)
-        resumeSessionState = state
+        let restoredEntries = sessionManager.restoreEntries(from: state, allEntries: allEntries)
 
-        if !sessionQueue.isEmpty {
-            showFlashcardSession = true
+        if !restoredEntries.isEmpty {
+            activeSession = FlashcardSessionData(entries: restoredEntries, resumeState: state)
         }
     }
 }

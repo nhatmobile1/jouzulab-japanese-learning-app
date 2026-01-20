@@ -19,7 +19,7 @@ struct FlashcardSessionView: View {
     @State private var deckNameCache: [String: String] = [:]
 
     @StateObject private var audioService = AudioService.shared
-    @Query private var decks: [Deck]
+    @Query(filter: #Predicate<Deck> { $0.entryCount > 0 }) private var decks: [Deck]
 
     private let srsService = SRSService.shared
     private let streakService = StreakService.shared

@@ -7,11 +7,24 @@ Usage:
     python parse_notes.py --input 日本語のレッスンノート.txt --output japanese_data.json
 """
 
+import hashlib
 import json
 import re
 import argparse
 from datetime import datetime
 from collections import defaultdict
+
+
+def generate_content_id(deck_id: str, japanese: str, reading: str | None) -> str:
+    """
+    Generate a stable ID based on content, not position.
+    Uses hash of deck_id + japanese + reading to ensure uniqueness.
+    """
+    # Combine fields for hashing (use empty string for None reading)
+    content = f"{deck_id}:{japanese}:{reading or ''}"
+    # Create a short hash (first 12 chars of SHA-256)
+    hash_hex = hashlib.sha256(content.encode('utf-8')).hexdigest()[:12]
+    return f"{deck_id}_{hash_hex}"
 
 
 class JapaneseNotesParser:
@@ -399,9 +412,10 @@ class JapaneseNotesParser:
         # Deduplicate and merge entries
         entries, stats['duplicates_merged'] = self.deduplicate_entries(raw_entries)
 
-        # Assign IDs and update stats
-        for i, entry in enumerate(entries, 1):
-            entry['id'] = f"entry_{i:05d}"
+        # Assign content-based IDs and update stats
+        for entry in entries:
+            # Use "italki" as the deck_id for italki lesson notes
+            entry['id'] = generate_content_id("italki", entry['japanese'], entry.get('reading'))
             stats['entries'] += 1
             if entry['reading']:
                 stats['with_reading'] += 1

@@ -4,70 +4,164 @@ import SwiftData
 struct SessionConfigView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    @Query private var allEntries: [Entry]
-    @Query(sort: \Deck.installedDate, order: .reverse) private var decks: [Deck]
 
-    let onStartSession: (Int, String?, Deck?) -> Void
+    let onStartSession: ([Entry], Int) -> Void
 
+    // Settings state
     @State private var selectedNewCardCount: Int = 10
     @State private var selectedJLPTFilter: String? = nil
-    @State private var selectedDeck: Deck? = nil
+    @State private var selectedDeckId: String? = nil
+
+    // Loading state
+    @State private var isLoadingSettings: Bool = false
+    @State private var settingsApplied: Bool = false
+    @State private var loadedEntries: [Entry] = []
+    @State private var loadedDecks: [Deck] = []
+    @State private var errorMessage: String? = nil
 
     @StateObject private var audioService = AudioService.shared
 
     private let newCardOptions = [5, 10, 15, 20, 50]
     private let jlptOptions = ["N5", "N4", "N3", "N2", "N1"]
 
+    // Computed stats from loaded entries
     private var reviewDueCount: Int {
         let now = Date()
-        return filteredEntries.filter { entry in
+        return loadedEntries.filter { entry in
             guard let nextReview = entry.nextReview else { return false }
             return nextReview <= now
         }.count
     }
 
     private var newCardAvailable: Int {
-        // A card is "new" if it has never been reviewed (reviewCount == 0)
-        // Don't rely on masteryLevel since older data might not have it set correctly
-        filteredEntries.filter { $0.reviewCount == 0 }.count
-    }
-
-    private var filteredEntries: [Entry] {
-        // Only include complete entries (have Japanese, reading, AND English)
-        var entries = allEntries.filter { $0.isComplete }
-
-        // Filter by deck
-        if let deck = selectedDeck {
-            let deckEntryIDs = Set(deck.entryIDs)
-            entries = entries.filter { deckEntryIDs.contains($0.id) }
-        }
-
-        // Filter by JLPT
-        if let jlpt = selectedJLPTFilter {
-            entries = entries.filter { $0.jlptLevel == jlpt }
-        }
-
-        return entries
+        loadedEntries.filter { $0.reviewCount == 0 }.count
     }
 
     private var totalCardsToStudy: Int {
         min(selectedNewCardCount, newCardAvailable) + reviewDueCount
     }
 
+    private var selectedDeck: Deck? {
+        guard let id = selectedDeckId else { return nil }
+        return loadedDecks.first { $0.id == id }
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                ScrollView {
-                    VStack(spacing: AppTheme.Spacing.xl) {
-                        // Session stats preview
+            mainContent
+                .background(
+                    Color.adaptive(
+                        light: AppTheme.Colors.Fallback.backgroundLight,
+                        dark: AppTheme.Colors.Fallback.backgroundDark
+                    )
+                    .ignoresSafeArea()
+                )
+                .navigationTitle("Study Setup")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cancel") {
+                            dismiss()
+                        }
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.primaryLight,
+                                dark: AppTheme.Colors.Fallback.primaryDark
+                            )
+                        )
+                    }
+                }
+                .alert("Error", isPresented: .constant(errorMessage != nil)) {
+                    Button("OK") { errorMessage = nil }
+                } message: {
+                    Text(errorMessage ?? "")
+                }
+                .onAppear {
+                    // Load decks immediately on appear
+                    loadDecks()
+                }
+        }
+    }
+
+    // MARK: - Data Loading
+
+    private func loadDecks() {
+        let descriptor = FetchDescriptor<Deck>(
+            predicate: #Predicate { $0.entryCount > 0 },
+            sortBy: [SortDescriptor(\.installedDate, order: .reverse)]
+        )
+        if let decks = try? modelContext.fetch(descriptor) {
+            loadedDecks = decks
+            print("[SessionConfigView] Loaded \(decks.count) decks")
+        }
+    }
+
+    private func applySettingsAndLoadCards() {
+        isLoadingSettings = true
+        settingsApplied = false
+        loadedEntries = []
+
+        // Use a Task to allow UI to update
+        Task {
+            // Small delay to show loading state
+            try? await Task.sleep(nanoseconds: 100_000_000)
+
+            await MainActor.run {
+                // Fetch entries directly from context
+                let descriptor = FetchDescriptor<Entry>()
+                guard let allEntries = try? modelContext.fetch(descriptor) else {
+                    errorMessage = "Failed to load entries"
+                    isLoadingSettings = false
+                    return
+                }
+
+                // Apply filters
+                var filtered = allEntries.filter { $0.isComplete }
+
+                // Filter by deck
+                if let deckId = selectedDeckId {
+                    filtered = filtered.filter { $0.deckId == deckId }
+                }
+
+                // Filter by JLPT
+                if let jlpt = selectedJLPTFilter {
+                    filtered = filtered.filter { $0.jlptLevel == jlpt }
+                }
+
+                loadedEntries = filtered
+                settingsApplied = true
+                isLoadingSettings = false
+
+                print("[SessionConfigView] Applied settings: \(filtered.count) entries loaded (deck: \(selectedDeck?.name ?? "All"))")
+            }
+        }
+    }
+
+    private func startSession() {
+        guard !loadedEntries.isEmpty else {
+            errorMessage = "No cards available to study"
+            return
+        }
+        onStartSession(loadedEntries, selectedNewCardCount)
+    }
+
+    // MARK: - Main Content
+
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(spacing: AppTheme.Spacing.xl) {
+                    // Stats preview (only show after settings applied)
+                    if settingsApplied {
                         StatsPreviewCard(
                             reviewDue: reviewDueCount,
                             newAvailable: newCardAvailable
                         )
                         .padding(.horizontal, AppTheme.Spacing.md)
+                    }
 
                     // Deck selection
-                    if !decks.isEmpty {
+                    if !loadedDecks.isEmpty {
                         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
                             Text("Study From")
                                 .font(AppTheme.Typography.headline)
@@ -91,21 +185,23 @@ struct SessionConfigView: View {
                                 HStack(spacing: AppTheme.Spacing.sm) {
                                     DeckOptionButton(
                                         label: "All Decks",
-                                        subtitle: "\(allEntries.count) entries",
+                                        subtitle: "All entries",
                                         icon: "square.stack.3d.up.fill",
-                                        isSelected: selectedDeck == nil
+                                        isSelected: selectedDeckId == nil
                                     ) {
-                                        selectedDeck = nil
+                                        selectedDeckId = nil
+                                        resetSettingsApplied()
                                     }
 
-                                    ForEach(decks) { deck in
+                                    ForEach(loadedDecks) { deck in
                                         DeckOptionButton(
                                             label: deck.name,
                                             subtitle: "\(deck.entryCount) entries",
                                             icon: "square.stack.3d.up",
-                                            isSelected: selectedDeck?.id == deck.id
+                                            isSelected: selectedDeckId == deck.id
                                         ) {
-                                            selectedDeck = deck
+                                            selectedDeckId = deck.id
+                                            resetSettingsApplied()
                                         }
                                     }
                                 }
@@ -143,6 +239,7 @@ struct SessionConfigView: View {
                                     isSelected: selectedNewCardCount == count
                                 ) {
                                     selectedNewCardCount = count
+                                    // Don't reset settings for card count change
                                 }
                             }
                         }
@@ -178,6 +275,7 @@ struct SessionConfigView: View {
                                     isSelected: selectedJLPTFilter == nil
                                 ) {
                                     selectedJLPTFilter = nil
+                                    resetSettingsApplied()
                                 }
 
                                 ForEach(jlptOptions, id: \.self) { level in
@@ -186,6 +284,7 @@ struct SessionConfigView: View {
                                         isSelected: selectedJLPTFilter == level
                                     ) {
                                         selectedJLPTFilter = level
+                                        resetSettingsApplied()
                                     }
                                 }
                             }
@@ -267,44 +366,91 @@ struct SessionConfigView: View {
                     .cardStyle()
                     .padding(.horizontal, AppTheme.Spacing.md)
 
-                        Spacer(minLength: AppTheme.Spacing.xl)
-                    }
-                    .padding(.vertical, AppTheme.Spacing.lg)
+                    Spacer(minLength: AppTheme.Spacing.xl)
                 }
+                .padding(.vertical, AppTheme.Spacing.lg)
+            }
 
-                // Floating Start Button
+            // Bottom button area
+            bottomButtonArea
+        }
+    }
+
+    private func resetSettingsApplied() {
+        settingsApplied = false
+        loadedEntries = []
+    }
+
+    // MARK: - Bottom Button Area
+
+    @ViewBuilder
+    private var bottomButtonArea: some View {
+        VStack(spacing: AppTheme.Spacing.md) {
+            if isLoadingSettings {
+                // Loading state
+                VStack(spacing: AppTheme.Spacing.sm) {
+                    ProgressView()
+                        .tint(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.primaryLight,
+                                dark: AppTheme.Colors.Fallback.primaryDark
+                            )
+                        )
+                    Text("Loading cards...")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                dark: AppTheme.Colors.Fallback.textSecondaryDark
+                            )
+                        )
+                }
+                .padding(.vertical, AppTheme.Spacing.lg)
+            } else if !settingsApplied {
+                // Apply Settings button
+                Button {
+                    applySettingsAndLoadCards()
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 18, weight: .semibold))
+                        Text("Apply Settings")
+                            .font(AppTheme.Typography.headline)
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, AppTheme.Spacing.xl)
+                    .padding(.vertical, AppTheme.Spacing.md)
+                    .background(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        )
+                    )
+                    .clipShape(Capsule())
+                    .shadow(
+                        color: Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        ).opacity(0.3),
+                        radius: 8,
+                        x: 0,
+                        y: 4
+                    )
+                }
+                .padding(.vertical, AppTheme.Spacing.lg)
+            } else {
+                // Start Session button (only after settings applied)
                 StartSessionButton(
                     totalCards: totalCardsToStudy,
                     reviewDue: reviewDueCount,
                     newCards: min(selectedNewCardCount, newCardAvailable),
                     isEnabled: totalCardsToStudy > 0
                 ) {
-                    onStartSession(selectedNewCardCount, selectedJLPTFilter, selectedDeck)
-                }
-            }
-            .background(
-                Color.adaptive(
-                    light: AppTheme.Colors.Fallback.backgroundLight,
-                    dark: AppTheme.Colors.Fallback.backgroundDark
-                )
-                .ignoresSafeArea()
-            )
-            .navigationTitle("Study Setup")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .foregroundStyle(
-                        Color.adaptive(
-                            light: AppTheme.Colors.Fallback.primaryLight,
-                            dark: AppTheme.Colors.Fallback.primaryDark
-                        )
-                    )
+                    startSession()
                 }
             }
         }
+        .padding(.horizontal, AppTheme.Spacing.md)
     }
 }
 
@@ -523,8 +669,8 @@ struct DeckOptionButton: View {
 // MARK: - Preview
 
 #Preview {
-    SessionConfigView { newCards, jlptFilter, deck in
-        print("Start session: \(newCards) new cards, filter: \(jlptFilter ?? "none"), deck: \(deck?.name ?? "all")")
+    SessionConfigView { entries, newCardLimit in
+        print("Start session: \(entries.count) entries, \(newCardLimit) new card limit")
     }
     .modelContainer(for: [Entry.self, Deck.self], inMemory: true)
 }

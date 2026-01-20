@@ -82,7 +82,7 @@ japanese-learning-app/
         ├── Theme/
         │   └── Theme.swift           # AppTheme colors, typography, spacing
         ├── Views/
-        │   ├── ContentView.swift     # Main tab view (Home, Study, Shadow, Browse, Settings)
+        │   ├── ContentView.swift     # Main tab view (Home, Study, Decks, Browse, Settings)
         │   ├── Dashboard/
         │   │   └── DashboardView.swift   # Home tab with stats
         │   ├── Study/
@@ -93,7 +93,7 @@ japanese-learning-app/
         │   │   ├── GradeButtonsView.swift    # Again/Hard/Good/Easy with intervals
         │   │   └── SessionSummaryView.swift  # Post-session stats
         │   ├── Shadow/
-        │   │   └── ShadowView.swift      # Shadowing practice (Phase 2.5)
+        │   │   └── ShadowView.swift      # Shadowing practice (Phase 2.5, not in tab bar)
         │   ├── Browse/
         │   │   ├── BrowseView.swift      # Unified filter system with search
         │   │   ├── BrowseFilters.swift   # Filter state and data provider
@@ -226,7 +226,7 @@ cd JouzuLab && xcodegen generate
 - [x] UI redesign with Organic/Natural theme
 - [x] AppHeader component with hamburger menu and profile button
 - [x] SideMenu slide-out navigation
-- [x] Tab order: Home → Study → Shadow → Browse → Settings
+- [x] Tab order: Home → Study → Decks → Browse → Settings (5 tabs, no "More" menu)
 - [x] Dark mode (adaptive colors throughout)
 
 ### Phase 2: Flashcards & Learning - COMPLETE
@@ -268,9 +268,9 @@ cd JouzuLab && xcodegen generate
 - Rounded system font throughout
 
 **Navigation:**
-- Bottom tab bar: Home, Study, Shadow, Browse, Settings
-- AppHeader on Home/Study/Shadow with hamburger menu + profile button
-- SideMenu slides out from left with navigation items
+- Bottom tab bar: Home, Study, Decks, Browse, Settings (5 tabs)
+- Standard iOS navigation bars with back buttons
+- Each tab has its own NavigationStack for proper navigation flow
 
 **BrowseView:**
 - Search bar at top
@@ -284,7 +284,22 @@ cd JouzuLab && xcodegen generate
 - Grade buttons: Again (red), Hard (orange), Good (green), Easy (blue)
 - Summary: Cards reviewed, accuracy %, option to continue
 
-## Recent Changes (January 18, 2026)
+## Recent Changes (January 18-19, 2026)
+
+### Study Session Flow Fix (Critical Bug)
+- **Problem:** On first app launch, pressing "Start Session" showed "No Cards Available" despite entries being loaded
+- **Root Cause:** SwiftUI's `fullScreenCover(isPresented:)` captures closure variables at view build time, not presentation time
+- **Solution:**
+  1. Changed SessionConfigView to use two-step flow: "Apply Settings" → "Start Session"
+  2. Changed StudyView to use `fullScreenCover(item:)` with `FlashcardSessionData` struct
+  3. Removed `@Query` from SessionConfigView, now fetches directly from `modelContext`
+- **Key Learning:** When passing data to sheets/covers, use item-based presentation (`sheet(item:)`) to ensure data is captured at presentation time, not view build time
+
+### SessionConfigView Refactor
+- Removed `@Query` - now fetches decks and entries directly from `modelContext`
+- Two-step button flow: "Apply Settings" loads cards, then "Start Session" becomes available
+- Stats preview only shows after settings are applied
+- Changing deck or JLPT filter resets to require re-applying settings
 
 ### Deck Detail View Improvements
 - Entries now grouped by month/year for italki notes (e.g., "January 2024")
@@ -299,6 +314,17 @@ cd JouzuLab && xcodegen generate
 - Reduces italki notes from ~10,500 to ~4,000 usable flashcard entries
 - Applied in both DeckCatalog (bundled) and DeckService (file import)
 
+### Genki Deck Update
+- Reparsed Genki 3rd Edition deck from Excel source file
+- 1774 complete entries with correct readings and translations
+- Entries organized by lesson (会G, L1-L23)
+
+### Navigation Cleanup
+- Reduced to 5 tabs: Home, Study, Decks, Browse, Settings
+- Removed Shadow tab (not implemented yet) to eliminate iOS "More" menu
+- BrowseView uses standard navigation bar (removed custom sidebar button)
+- Clean single back button navigation from EntryDetailView
+
 ### Dashboard Updates
 - "Total Entries" → "Total Studying" (entries with masteryLevel != .new)
 - "Entry Types" breakdown now shows only entries being studied
@@ -306,6 +332,7 @@ cd JouzuLab && xcodegen generate
 ### Bug Fixes
 - Fixed italki deck not showing as installed (migration for existing users)
 - Fixed "Import Failed" error (DeckCatalog handles both DeckJSON and JapaneseData formats)
+- Fixed duplicate back button issue in EntryDetailView
 - Added app icon (koi fish design)
 
 ## Next Steps (Immediate)
@@ -314,6 +341,66 @@ cd JouzuLab && xcodegen generate
 2. **Import a Genki deck** - Use create_genki_deck.py to create and import
 3. **Process first shadowing content** - Use `shadowing_tool.py` on a video clip
 4. **Build stats dashboard** - Show study progress, streaks, mastery breakdown
+
+## SwiftUI/SwiftData Troubleshooting Patterns
+
+### Data Not Available in Sheets/Covers
+
+**Problem:** Data passed to `sheet(isPresented:)` or `fullScreenCover(isPresented:)` is empty or stale.
+
+**Why it happens:** SwiftUI captures closure variables when the view body is built, not when the sheet is presented. If your data changes after the view is built but before presentation, the sheet receives the old (possibly empty) data.
+
+**Solution:** Use item-based presentation:
+```swift
+// BAD - data captured at view build time
+@State private var entries: [Entry] = []
+.fullScreenCover(isPresented: $showSession) {
+    SessionView(entries: entries)  // May be empty!
+}
+
+// GOOD - data passed at presentation time
+struct SessionData: Identifiable {
+    let id = UUID()
+    let entries: [Entry]
+}
+@State private var activeSession: SessionData? = nil
+.fullScreenCover(item: $activeSession) { data in
+    SessionView(entries: data.entries)  // Always has the data
+}
+```
+
+### @Query Not Updating During Async Operations
+
+**Problem:** `@Query` results don't update inside a `Task` loop or async polling.
+
+**Why it happens:** `@Query` updates trigger SwiftUI view re-renders. Inside a Task, the view isn't re-rendering, so the query results don't change.
+
+**Solution:** Fetch directly from `modelContext` instead of relying on `@Query`:
+```swift
+// Instead of waiting for @Query to update
+@Query private var entries: [Entry]
+
+// Fetch directly when you need current data
+let descriptor = FetchDescriptor<Entry>()
+let entries = try modelContext.fetch(descriptor)
+```
+
+### Race Conditions on First App Launch
+
+**Problem:** Data import happens async on first launch, but views try to use the data before it's ready.
+
+**Solution patterns:**
+1. **Two-step UI flow:** Show "Apply Settings" button that loads data, then show action button
+2. **Loading states:** Track `isDataLoaded` state, show spinner until data is available
+3. **Direct context fetch:** Don't rely on `@Query` for time-sensitive operations
+4. **Item-based presentation:** Pass loaded data directly to presented views
+
+### General Debugging Tips
+
+1. Add `print()` statements to trace data flow through callbacks
+2. Check if variables are captured at the right time (view build vs presentation)
+3. For sheets/covers: Always prefer `sheet(item:)` over `sheet(isPresented:)` when passing data
+4. For SwiftData: Use `modelContext.fetch()` when you need guaranteed fresh data
 
 ## Documentation
 

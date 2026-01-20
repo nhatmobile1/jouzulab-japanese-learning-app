@@ -11,7 +11,6 @@ struct ContentView: View {
         case home = "Home"
         case study = "Study"
         case decks = "Decks"
-        case shadow = "Shadow"
         case browse = "Browse"
         case settings = "Settings"
 
@@ -20,7 +19,6 @@ struct ContentView: View {
             case .home: return "house.fill"
             case .study: return "rectangle.stack.fill"
             case .decks: return "square.stack.3d.up.fill"
-            case .shadow: return "waveform"
             case .browse: return "book.fill"
             case .settings: return "gearshape.fill"
             }
@@ -70,8 +68,13 @@ struct ContentView: View {
     }
 
     /// Migrate existing entries to have proper Deck records if they were imported before the deck system
+    /// Only runs once for legacy data migration - does not recreate decks that were intentionally unloaded
     private func migrateExistingEntriesToDeck() async throws {
-        let catalog = DeckCatalog.shared
+        // Check if migration has already been performed
+        let migrationKey = "hasPerformedItalkiMigration"
+        if UserDefaults.standard.bool(forKey: migrationKey) {
+            return
+        }
 
         // Check if italki deck exists
         var descriptor = FetchDescriptor<Deck>(
@@ -80,41 +83,48 @@ struct ContentView: View {
         descriptor.fetchLimit = 1
         let existingDeck = try modelContext.fetch(descriptor).first
 
-        if existingDeck == nil {
-            // Check if we have entries that should belong to the italki deck
-            let entryDescriptor = FetchDescriptor<Entry>()
-            let allEntries = try modelContext.fetch(entryDescriptor)
-
-            // If there are entries without deckId, they're from the old import system
-            let orphanedEntries = allEntries.filter { $0.deckId == nil }
-
-            if !orphanedEntries.isEmpty {
-                // Create the italki deck
-                let deck = Deck(
-                    id: "jouzu_italki_notes",
-                    name: "italki Lesson Notes",
-                    deckDescription: "~4,000 complete vocabulary and phrases from personal italki Japanese lessons (2023-2026)",
-                    author: "JouzuLab",
-                    version: "1.0",
-                    sourceFileName: "japanese_data"
-                )
-                modelContext.insert(deck)
-
-                // Update all orphaned entries to belong to this deck
-                var entryIDs: [String] = []
-                for entry in orphanedEntries {
-                    entry.deckId = "jouzu_italki_notes"
-                    entryIDs.append(entry.id)
-                }
-
-                deck.entryIDs = entryIDs
-                deck.entryCount = entryIDs.count
-                deck.installedDate = Date()
-
-                try modelContext.save()
-                print("Migrated \(orphanedEntries.count) entries to italki deck")
-            }
+        if existingDeck != nil {
+            // Deck already exists, mark migration as complete
+            UserDefaults.standard.set(true, forKey: migrationKey)
+            return
         }
+
+        // Check if we have entries that should belong to the italki deck
+        let entryDescriptor = FetchDescriptor<Entry>()
+        let allEntries = try modelContext.fetch(entryDescriptor)
+
+        // If there are entries without deckId, they're from the old import system
+        let orphanedEntries = allEntries.filter { $0.deckId == nil }
+
+        if !orphanedEntries.isEmpty {
+            // Create the italki deck
+            let deck = Deck(
+                id: "jouzu_italki_notes",
+                name: "italki Lesson Notes",
+                deckDescription: "~4,000 complete vocabulary and phrases from personal italki Japanese lessons (2023-2026)",
+                author: "JouzuLab",
+                version: "1.0",
+                sourceFileName: "japanese_data"
+            )
+            modelContext.insert(deck)
+
+            // Update all orphaned entries to belong to this deck
+            var entryIDs: [String] = []
+            for entry in orphanedEntries {
+                entry.deckId = "jouzu_italki_notes"
+                entryIDs.append(entry.id)
+            }
+
+            deck.entryIDs = entryIDs
+            deck.entryCount = entryIDs.count
+            deck.installedDate = Date()
+
+            try modelContext.save()
+            print("Migrated \(orphanedEntries.count) entries to italki deck")
+        }
+
+        // Mark migration as complete so it doesn't run again
+        UserDefaults.standard.set(true, forKey: migrationKey)
     }
 }
 
@@ -142,12 +152,6 @@ struct MainTabView: View {
                     Label(ContentView.Tab.decks.rawValue, systemImage: ContentView.Tab.decks.icon)
                 }
                 .tag(ContentView.Tab.decks)
-
-            ShadowView()
-                .tabItem {
-                    Label(ContentView.Tab.shadow.rawValue, systemImage: ContentView.Tab.shadow.icon)
-                }
-                .tag(ContentView.Tab.shadow)
 
             BrowseView()
                 .tabItem {

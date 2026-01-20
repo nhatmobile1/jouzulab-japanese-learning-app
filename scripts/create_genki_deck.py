@@ -15,11 +15,24 @@ Or tab-separated without headers - use --no-header flag.
 
 import argparse
 import csv
+import hashlib
 import json
 import re
 import sys
 from pathlib import Path
 from datetime import datetime
+
+
+def generate_content_id(deck_id: str, japanese: str, reading: str | None) -> str:
+    """
+    Generate a stable ID based on content, not position.
+    Uses hash of deck_id + japanese + reading to ensure uniqueness.
+    """
+    # Combine fields for hashing (use empty string for None reading)
+    content = f"{deck_id}:{japanese}:{reading or ''}"
+    # Create a short hash (first 12 chars of SHA-256)
+    hash_hex = hashlib.sha256(content.encode('utf-8')).hexdigest()[:12]
+    return f"{deck_id}_{hash_hex}"
 
 
 def detect_delimiter(filepath: Path) -> str:
@@ -126,8 +139,12 @@ def create_deck(
             if lesson:
                 tags.append(f'lesson-{lesson}')
 
+            # Generate content-based ID
+            entry_id = generate_content_id(deck_id, japanese, reading if reading else None)
+
             # Create entry
             entry = {
+                'id': entry_id,
                 'japanese': japanese,
                 'reading': reading if reading else None,
                 'english': english if english else None,

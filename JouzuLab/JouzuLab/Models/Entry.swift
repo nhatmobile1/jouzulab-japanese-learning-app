@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import SwiftData
 
@@ -159,8 +160,13 @@ struct EntryJSON: Codable {
     }
 
     func toEntry(deckId: String? = nil, index: Int = 0) -> Entry {
-        // Auto-generate ID if not provided
-        let entryId = id ?? "\(deckId ?? "deck")_\(String(format: "%05d", index))"
+        // Auto-generate content-based ID if not provided
+        // This ensures stable IDs regardless of entry order
+        let entryId = id ?? Self.generateContentId(
+            deckId: deckId ?? "deck",
+            japanese: japanese,
+            reading: reading
+        )
 
         // Auto-detect entry type if not provided
         let type = entryType ?? detectEntryType(japanese)
@@ -196,6 +202,19 @@ struct EntryJSON: Codable {
         }
         // Default to vocab
         return "vocab"
+    }
+
+    /// Generate a stable ID based on content, not position.
+    /// Uses hash of deckId + japanese + reading to ensure uniqueness.
+    /// This matches the Python parsers' generate_content_id function.
+    static func generateContentId(deckId: String, japanese: String, reading: String?) -> String {
+        // Combine fields for hashing (use empty string for nil reading)
+        let content = "\(deckId):\(japanese):\(reading ?? "")"
+        // Create a short hash (first 12 chars of SHA-256)
+        let data = Data(content.utf8)
+        let hash = SHA256.hash(data: data)
+        let hashHex = hash.prefix(6).map { String(format: "%02x", $0) }.joined()
+        return "\(deckId)_\(hashHex)"
     }
 }
 
