@@ -295,6 +295,9 @@ struct FlashcardSessionView: View {
         // Process review with SRS
         srsService.processReview(entry: entry, grade: grade)
 
+        // Record individual card review for today's session tracking
+        streakService.recordCardReview(entryId: entry.id, grade: grade.rawValue)
+
         // If "Again", add card back to end of queue
         if grade == .again {
             cardQueue.append(entry)

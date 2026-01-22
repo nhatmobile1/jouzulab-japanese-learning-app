@@ -1,5 +1,31 @@
 import Foundation
 
+// MARK: - Reviewed Card (for tracking today's session)
+
+struct ReviewedCard: Codable, Identifiable {
+    let id: UUID
+    let entryId: String
+    let grade: Int // SRSGrade raw value (0-3)
+    let reviewedAt: Date
+
+    init(entryId: String, grade: Int) {
+        self.id = UUID()
+        self.entryId = entryId
+        self.grade = grade
+        self.reviewedAt = Date()
+    }
+
+    var gradeLabel: String {
+        switch grade {
+        case 0: return "Again"
+        case 1: return "Hard"
+        case 2: return "Good"
+        case 3: return "Easy"
+        default: return "Unknown"
+        }
+    }
+}
+
 // MARK: - Study Stats
 
 struct StudyStats: Codable {
@@ -14,6 +40,7 @@ struct StudyStats: Codable {
         var cardsReviewed: Int = 0
         var correctCount: Int = 0
         var studyTime: TimeInterval = 0 // seconds
+        var reviewedCards: [ReviewedCard] = [] // Individual card reviews
     }
 }
 
@@ -91,6 +118,56 @@ class StreakService: ObservableObject {
     var todayAccuracy: Double? {
         guard let today = todayStats, today.cardsReviewed > 0 else { return nil }
         return Double(today.correctCount) / Double(today.cardsReviewed)
+    }
+
+    // MARK: - Card Review Tracking
+
+    /// Record an individual card review
+    func recordCardReview(entryId: String, grade: Int) {
+        let today = dateKey(for: Date())
+        var dailyStats = stats.studyHistory[today] ?? StudyStats.DailyStats()
+
+        let reviewedCard = ReviewedCard(entryId: entryId, grade: grade)
+        dailyStats.reviewedCards.append(reviewedCard)
+        stats.studyHistory[today] = dailyStats
+
+        saveStats()
+    }
+
+    /// Get today's reviewed cards
+    var todayReviewedCards: [ReviewedCard] {
+        let today = dateKey(for: Date())
+        return stats.studyHistory[today]?.reviewedCards ?? []
+    }
+
+    /// Get unique entry IDs reviewed today (for filtering)
+    var todayReviewedEntryIds: Set<String> {
+        Set(todayReviewedCards.map { $0.entryId })
+    }
+
+    /// Get cards reviewed today grouped by grade
+    var todayCardsByGrade: [Int: [ReviewedCard]] {
+        Dictionary(grouping: todayReviewedCards, by: { $0.grade })
+    }
+
+    /// Get cards that need more practice (graded Again or Hard)
+    var todayMistakes: [ReviewedCard] {
+        todayReviewedCards.filter { $0.grade <= 1 }
+    }
+
+    /// Get unique entry IDs that were mistakes today
+    var todayMistakeEntryIds: Set<String> {
+        Set(todayMistakes.map { $0.entryId })
+    }
+
+    /// Clear today's reviewed cards (for testing/reset)
+    func clearTodayReviewedCards() {
+        let today = dateKey(for: Date())
+        if var dailyStats = stats.studyHistory[today] {
+            dailyStats.reviewedCards = []
+            stats.studyHistory[today] = dailyStats
+            saveStats()
+        }
     }
 
     // MARK: - Private Methods

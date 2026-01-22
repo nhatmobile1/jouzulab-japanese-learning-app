@@ -26,6 +26,7 @@ Self-directed Japanese language learning tool that converts personal lesson note
 - Python 3 (`scripts/enrich_jlpt.py`) - JLPT enrichment via Jisho.org API
 - Python 3 (`scripts/shadowing_tool.py`) - Audio/video processing for shadowing
 - Python 3 (`scripts/create_genki_deck.py`) - Convert CSV/TSV vocab lists to deck JSON
+- Python 3 (`scripts/create_quartet_deck.py`) - Convert QUARTET Excel to deck JSON
 - JSON output
 
 **iOS App:**
@@ -53,7 +54,8 @@ japanese-learning-app/
 │   ├── enrich_vocab.py               # Enrich vocab with readings/English via Jisho API
 │   ├── enrich_jlpt.py                # JLPT level enrichment via Jisho API
 │   ├── shadowing_tool.py             # Process video/audio for shadowing
-│   └── create_genki_deck.py          # Convert CSV/TSV to deck JSON format
+│   ├── create_genki_deck.py          # Convert CSV/TSV to deck JSON format
+│   └── create_quartet_deck.py        # Convert QUARTET Excel to deck JSON
 │
 ├── tasks/
 │   └── todo.md                       # Task tracking and planning
@@ -158,10 +160,15 @@ japanese-learning-app/
 ```
 
 **Entry fields:** Only `japanese` is required. Optional fields auto-fill:
-- `id`: Auto-generated as `{deckId}_{index}` if not provided
+- `id`: Auto-generated as content-based hash `{deckId}_{sha256(deckId:japanese:reading)[:12]}` if not provided
 - `entry_type`: Auto-detected (vocab/phrase/sentence) based on content
 - `tags`, `grammar_patterns`: Default to empty arrays
 - Other fields: Default to nil/false/0
+
+**Content-Based IDs:** Entry IDs are generated from a hash of the content (deckId + japanese + reading), not position. This ensures:
+- Stable IDs regardless of entry order in the source file
+- Safe re-importing: adding/removing/reordering entries won't cause ID collisions
+- SRS progress is preserved when re-importing updated notes
 
 **Entry Types:** vocab, phrase, sentence
 
@@ -201,7 +208,10 @@ python3 scripts/shadowing_tool.py video.mp4 \
 # Create Genki deck from CSV
 python3 scripts/create_genki_deck.py genki1_vocab.csv --output genki_1.json --book 1
 
-# Update iOS app data
+# Create QUARTET deck from Excel
+python3 scripts/create_quartet_deck.py QUARTET_word_index.xlsx --output quartet_1_deck.json --volume 1
+
+# Update iOS app data (copies to both locations)
 cp data/japanese_data.json JouzuLab/JouzuLab/Resources/
 
 # Open shadowing practice
@@ -284,7 +294,29 @@ cd JouzuLab && xcodegen generate
 - Grade buttons: Again (red), Hard (orange), Good (green), Easy (blue)
 - Summary: Cards reviewed, accuracy %, option to continue
 
-## Recent Changes (January 18-19, 2026)
+## Recent Changes (January 19-20, 2026)
+
+### QUARTET Deck Added
+- Created `scripts/create_quartet_deck.py` to parse QUARTET Excel vocabulary files
+- Added QUARTET I deck (1,537 intermediate N3 entries) to DeckCatalog
+- Deck entries organized by lesson and reading section (L1-L12)
+
+### Content-Based Entry IDs
+- All parsers now generate stable IDs based on content hash instead of position
+- ID format: `{deckId}_{sha256(deckId:japanese:reading)[:12]}`
+- Benefits: safe re-importing, preserved SRS progress, no ID collisions when reordering
+- Updated: `parse_notes.py`, `create_genki_deck.py`, `create_quartet_deck.py`, `Entry.swift`
+
+### Textbook Deck Author Attribution
+- Genki and QUARTET decks now show "By The Japan Times Publishing, Ltd." instead of "By JouzuLab"
+
+### BrowseView Keyboard Fix
+- Added `@FocusState` to track search field focus
+- Keyboard now dismisses when tapping outside the search field
+- Keyboard dismisses when pressing "Search" button or clearing text
+- Added `.submitLabel(.search)` for proper keyboard button
+
+## Previous Changes (January 18-19, 2026)
 
 ### Study Session Flow Fix (Critical Bug)
 - **Problem:** On first app launch, pressing "Start Session" showed "No Cards Available" despite entries being loaded
@@ -337,8 +369,8 @@ cd JouzuLab && xcodegen generate
 
 ## Next Steps (Immediate)
 
-1. **Test flashcard flow end-to-end** - Verify SRS intervals persist correctly
-2. **Import a Genki deck** - Use create_genki_deck.py to create and import
+1. **Update italki notes** - Add readings and English translations to remaining entries
+2. **Re-parse notes** - Run parser to regenerate JSON with content-based IDs
 3. **Process first shadowing content** - Use `shadowing_tool.py` on a video clip
 4. **Build stats dashboard** - Show study progress, streaks, mastery breakdown
 

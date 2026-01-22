@@ -14,6 +14,7 @@ struct BrowseView: View {
 
     @State private var filterState = BrowseFilterState()
     @State private var availableFilters: [FilterType: [FilterOption]] = [:]
+    @FocusState private var isSearchFocused: Bool
 
     private var filteredEntries: [Entry] {
         let provider = FilterDataProvider(modelContext: modelContext)
@@ -24,7 +25,7 @@ struct BrowseView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Search bar
-                SearchBarView(text: $filterState.searchText)
+                SearchBarView(text: $filterState.searchText, isFocused: $isSearchFocused)
                     .padding(.horizontal, AppTheme.Spacing.md)
                     .padding(.vertical, AppTheme.Spacing.xs)
 
@@ -49,6 +50,9 @@ struct BrowseView: View {
                 )
                 .ignoresSafeArea()
             )
+            .onTapGesture {
+                isSearchFocused = false
+            }
             .navigationTitle("Browse")
             .navigationBarTitleDisplayMode(.large)
             .task {
@@ -150,6 +154,7 @@ struct BrowseView: View {
 
 struct SearchBarView: View {
     @Binding var text: String
+    var isFocused: FocusState<Bool>.Binding
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.sm) {
@@ -170,10 +175,16 @@ struct SearchBarView: View {
                         dark: AppTheme.Colors.Fallback.textPrimaryDark
                     )
                 )
+                .focused(isFocused)
+                .submitLabel(.search)
+                .onSubmit {
+                    isFocused.wrappedValue = false
+                }
 
             if !text.isEmpty {
                 Button {
                     text = ""
+                    isFocused.wrappedValue = false
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 16))

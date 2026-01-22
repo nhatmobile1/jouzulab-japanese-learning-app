@@ -18,6 +18,7 @@ struct StudyView: View {
     @State private var showSessionSummary = false
     @State private var lastSessionStats: SessionStats?
     @State private var isResumingSession = false
+    @State private var lastSessionEntryIds: [String] = []  // Track entries from last session
 
     @StateObject private var streakService = StreakService.shared
     @StateObject private var sessionManager = StudySessionManager.shared
@@ -165,6 +166,20 @@ struct StudyView: View {
                         // Streak Widget
                         StreakWidget(streakService: streakService)
                             .padding(.horizontal, AppTheme.Spacing.md)
+
+                        // Today's Session Card (if any cards reviewed today)
+                        if !streakService.todayReviewedCards.isEmpty {
+                            TodaySessionCard(
+                                streakService: streakService,
+                                onReviewMistakes: {
+                                    startReviewSession(entryIds: Array(streakService.todayMistakeEntryIds))
+                                },
+                                onReviewAll: {
+                                    startReviewSession(entryIds: Array(streakService.todayReviewedEntryIds))
+                                }
+                            )
+                            .padding(.horizontal, AppTheme.Spacing.md)
+                        }
 
                         // Session Buttons
                         if sessionManager.hasActiveSession, let info = sessionManager.activeSessionInfo {
@@ -373,6 +388,8 @@ struct StudyView: View {
                 resumeState: sessionData.resumeState,
                 onSessionComplete: { stats in
                     lastSessionStats = stats
+                    // Store the entry IDs from this session for review options
+                    lastSessionEntryIds = sessionData.entries.map { $0.id }
                     sessionManager.clearSession()
                     activeSession = nil
                     showSessionSummary = true
@@ -383,7 +400,16 @@ struct StudyView: View {
             if let stats = lastSessionStats {
                 SessionSummaryView(
                     stats: stats,
-                    onContinue: hasCardsToStudy ? {
+                    mistakeCount: streakService.todayMistakes.count,
+                    onReviewMistakes: streakService.todayMistakes.isEmpty ? nil : {
+                        showSessionSummary = false
+                        startReviewSession(entryIds: Array(streakService.todayMistakeEntryIds))
+                    },
+                    onReviewAll: lastSessionEntryIds.isEmpty ? nil : {
+                        showSessionSummary = false
+                        startReviewSession(entryIds: lastSessionEntryIds)
+                    },
+                    onAddMoreCards: hasCardsToStudy ? {
                         showSessionSummary = false
                         showSessionConfig = true
                     } : nil,
@@ -438,6 +464,25 @@ struct StudyView: View {
             activeSession = FlashcardSessionData(entries: restoredEntries, resumeState: state)
         }
     }
+
+    /// Start a review session with specific entry IDs (for Review Mistakes or Review All)
+    private func startReviewSession(entryIds: [String]) {
+        // Find entries matching the IDs
+        let entryIdSet = Set(entryIds)
+        let entriesToReview = allEntries.filter { entryIdSet.contains($0.id) }
+
+        guard !entriesToReview.isEmpty else {
+            print("[StudyView] startReviewSession: No matching entries found")
+            return
+        }
+
+        print("[StudyView] Starting review session with \(entriesToReview.count) entries")
+
+        // Use a small delay to ensure sheet dismissal animation completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            activeSession = FlashcardSessionData(entries: entriesToReview, resumeState: nil)
+        }
+    }
 }
 
 struct FeatureRow: View {
@@ -479,6 +524,192 @@ struct FeatureRow: View {
 
             Spacer()
         }
+    }
+}
+
+// MARK: - Today's Session Card
+
+struct TodaySessionCard: View {
+    @ObservedObject var streakService: StreakService
+    let onReviewMistakes: () -> Void
+    let onReviewAll: () -> Void
+
+    private var reviewedCount: Int {
+        streakService.todayReviewedCards.count
+    }
+
+    private var mistakeCount: Int {
+        streakService.todayMistakes.count
+    }
+
+    private var accuracy: Double {
+        guard reviewedCount > 0 else { return 0 }
+        return Double(reviewedCount - mistakeCount) / Double(reviewedCount)
+    }
+
+    private var gradeBreakdown: [Int: Int] {
+        var breakdown: [Int: Int] = [0: 0, 1: 0, 2: 0, 3: 0]
+        for card in streakService.todayReviewedCards {
+            breakdown[card.grade, default: 0] += 1
+        }
+        return breakdown
+    }
+
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.md) {
+            // Header
+            HStack {
+                Text("Today's Progress")
+                    .font(AppTheme.Typography.subheadline)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        )
+                    )
+                Spacer()
+
+                Text("\(reviewedCount) cards")
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                        )
+                    )
+            }
+
+            // Grade breakdown
+            HStack(spacing: AppTheme.Spacing.sm) {
+                GradeChip(label: "Again", count: gradeBreakdown[0] ?? 0, color: AppTheme.Colors.Fallback.error)
+                GradeChip(label: "Hard", count: gradeBreakdown[1] ?? 0, color: AppTheme.Colors.Fallback.warning)
+                GradeChip(label: "Good", count: gradeBreakdown[2] ?? 0, color: AppTheme.Colors.Fallback.success)
+                GradeChip(label: "Easy", count: gradeBreakdown[3] ?? 0, color: Color.adaptive(
+                    light: AppTheme.Colors.Fallback.primaryLight,
+                    dark: AppTheme.Colors.Fallback.primaryDark
+                ))
+            }
+
+            // Accuracy bar
+            VStack(spacing: AppTheme.Spacing.xxs) {
+                HStack {
+                    Text("Accuracy")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                dark: AppTheme.Colors.Fallback.textSecondaryDark
+                            )
+                        )
+                    Spacer()
+                    Text("\(Int(accuracy * 100))%")
+                        .font(AppTheme.Typography.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(accuracyColor)
+                }
+
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(
+                                Color.adaptive(
+                                    light: AppTheme.Colors.Fallback.surfaceElevatedLight,
+                                    dark: AppTheme.Colors.Fallback.surfaceElevatedDark
+                                )
+                            )
+                            .frame(height: 8)
+
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(accuracyColor)
+                            .frame(width: geometry.size.width * accuracy, height: 8)
+                    }
+                }
+                .frame(height: 8)
+            }
+
+            // Action buttons
+            HStack(spacing: AppTheme.Spacing.sm) {
+                if mistakeCount > 0 {
+                    Button {
+                        onReviewMistakes()
+                    } label: {
+                        HStack(spacing: AppTheme.Spacing.xxs) {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.system(size: 12))
+                            Text("Mistakes (\(mistakeCount))")
+                                .font(AppTheme.Typography.caption)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, AppTheme.Spacing.sm)
+                        .padding(.vertical, AppTheme.Spacing.xs)
+                        .background(AppTheme.Colors.Fallback.warning)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small))
+                    }
+                }
+
+                Button {
+                    onReviewAll()
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.xxs) {
+                        Image(systemName: "rectangle.stack")
+                            .font(.system(size: 12))
+                        Text("Review All")
+                            .font(AppTheme.Typography.caption)
+                    }
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        )
+                    )
+                    .padding(.horizontal, AppTheme.Spacing.sm)
+                    .padding(.vertical, AppTheme.Spacing.xs)
+                    .background(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        ).opacity(0.15)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small))
+                }
+            }
+        }
+        .padding(AppTheme.Spacing.lg)
+        .cardStyle()
+    }
+
+    private var accuracyColor: Color {
+        if accuracy >= 0.8 {
+            return AppTheme.Colors.Fallback.success
+        } else if accuracy >= 0.6 {
+            return AppTheme.Colors.Fallback.warning
+        } else {
+            return AppTheme.Colors.Fallback.error
+        }
+    }
+}
+
+struct GradeChip: View {
+    let label: String
+    let count: Int
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text("\(count)")
+                .font(AppTheme.Typography.callout)
+                .fontWeight(.semibold)
+                .foregroundStyle(color)
+            Text(label)
+                .font(.system(size: 9))
+                .foregroundStyle(
+                    Color.adaptive(
+                        light: AppTheme.Colors.Fallback.textSecondaryLight,
+                        dark: AppTheme.Colors.Fallback.textSecondaryDark
+                    )
+                )
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 

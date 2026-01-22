@@ -4,7 +4,10 @@ struct SessionSummaryView: View {
     @Environment(\.dismiss) private var dismiss
 
     let stats: SessionStats
-    let onContinue: (() -> Void)?
+    let mistakeCount: Int
+    let onReviewMistakes: (() -> Void)?
+    let onReviewAll: (() -> Void)?
+    let onAddMoreCards: (() -> Void)?
     let onFinish: () -> Void
 
     var body: some View {
@@ -56,13 +59,32 @@ struct SessionSummaryView: View {
 
                     // Action buttons
                     VStack(spacing: AppTheme.Spacing.sm) {
-                        if let onContinue = onContinue {
+                        // Review Mistakes (if there are any)
+                        if let onReviewMistakes = onReviewMistakes, mistakeCount > 0 {
                             Button {
-                                onContinue()
+                                onReviewMistakes()
                             } label: {
                                 HStack {
                                     Image(systemName: "arrow.counterclockwise")
-                                    Text("Study More")
+                                    Text("Review Mistakes (\(mistakeCount))")
+                                }
+                                .font(AppTheme.Typography.headline)
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, AppTheme.Spacing.md)
+                                .background(AppTheme.Colors.Fallback.warning)
+                                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
+                            }
+                        }
+
+                        // Review All Cards from this session
+                        if let onReviewAll = onReviewAll {
+                            Button {
+                                onReviewAll()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "rectangle.stack")
+                                    Text("Review All (\(stats.cardsReviewed))")
                                 }
                                 .font(AppTheme.Typography.headline)
                                 .foregroundStyle(.white)
@@ -78,6 +100,34 @@ struct SessionSummaryView: View {
                             }
                         }
 
+                        // Add More Cards
+                        if let onAddMoreCards = onAddMoreCards {
+                            Button {
+                                onAddMoreCards()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "plus.circle")
+                                    Text("Add More Cards")
+                                }
+                                .font(AppTheme.Typography.headline)
+                                .foregroundStyle(
+                                    Color.adaptive(
+                                        light: AppTheme.Colors.Fallback.primaryLight,
+                                        dark: AppTheme.Colors.Fallback.primaryDark
+                                    )
+                                )
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, AppTheme.Spacing.md)
+                                .background(
+                                    Color.adaptive(
+                                        light: AppTheme.Colors.Fallback.primaryLight,
+                                        dark: AppTheme.Colors.Fallback.primaryDark
+                                    ).opacity(0.15)
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
+                            }
+                        }
+
                         Button {
                             onFinish()
                         } label: {
@@ -85,8 +135,8 @@ struct SessionSummaryView: View {
                                 .font(AppTheme.Typography.headline)
                                 .foregroundStyle(
                                     Color.adaptive(
-                                        light: AppTheme.Colors.Fallback.primaryLight,
-                                        dark: AppTheme.Colors.Fallback.primaryDark
+                                        light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                        dark: AppTheme.Colors.Fallback.textSecondaryDark
                                     )
                                 )
                                 .frame(maxWidth: .infinity)
@@ -305,7 +355,10 @@ struct GradeStatItem: View {
 
     return SessionSummaryView(
         stats: stats,
-        onContinue: { print("Continue") },
+        mistakeCount: 3,
+        onReviewMistakes: { print("Review Mistakes") },
+        onReviewAll: { print("Review All") },
+        onAddMoreCards: { print("Add More") },
         onFinish: { print("Finish") }
     )
 }

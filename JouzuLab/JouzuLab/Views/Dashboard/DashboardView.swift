@@ -4,8 +4,10 @@ import SwiftData
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var allEntries: [Entry]
+    @Query private var allDecks: [Deck]
 
     @Environment(\.colorScheme) private var colorScheme
+    @StateObject private var streakService = StreakService.shared
     @State private var showSideMenu = false
 
     // MARK: - Computed Stats
@@ -62,6 +64,42 @@ struct DashboardView: View {
         return counts
     }
 
+    /// Cards reviewed today
+    private var cardsReviewedToday: Int {
+        streakService.todayStats?.cardsReviewed ?? 0
+    }
+
+    /// All-time accuracy
+    private var allTimeAccuracy: Double? {
+        let totalReviews = allEntries.reduce(0) { $0 + $1.reviewCount }
+        let totalCorrect = allEntries.reduce(0) { $0 + $1.correctCount }
+        guard totalReviews > 0 else { return nil }
+        return Double(totalCorrect) / Double(totalReviews)
+    }
+
+    /// JLPT level progress (mastered/learning vs total for each level)
+    private var jlptProgress: [(level: String, mastered: Int, learning: Int, total: Int)] {
+        let levels = ["N5", "N4", "N3", "N2", "N1"]
+        return levels.compactMap { level in
+            let entriesForLevel = allEntries.filter { $0.jlptLevel == level }
+            guard !entriesForLevel.isEmpty else { return nil }
+            let mastered = entriesForLevel.filter { $0.masteryLevel == .mastered }.count
+            let learning = entriesForLevel.filter { $0.masteryLevel == .learning || $0.masteryLevel == .reviewing }.count
+            return (level, mastered, learning, entriesForLevel.count)
+        }
+    }
+
+    /// Mastery progress by deck
+    private var deckProgress: [(deck: Deck, mastered: Int, learning: Int, total: Int)] {
+        allDecks.compactMap { deck in
+            let entriesForDeck = allEntries.filter { $0.deckId == deck.id }
+            guard !entriesForDeck.isEmpty else { return nil }
+            let mastered = entriesForDeck.filter { $0.masteryLevel == .mastered }.count
+            let learning = entriesForDeck.filter { $0.masteryLevel == .learning || $0.masteryLevel == .reviewing }.count
+            return (deck, mastered, learning, entriesForDeck.count)
+        }
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -86,11 +124,27 @@ struct DashboardView: View {
                         // Welcome Header
                         welcomeHeader
 
+                        // Study Streak Card
+                        streakCard
+
+                        // Today's Progress Card
+                        todayProgressCard
+
                         // Quick Stats Grid
                         statsGrid
 
                         // Study Progress Card
                         progressCard
+
+                        // JLPT Progress Breakdown
+                        if !jlptProgress.isEmpty {
+                            jlptProgressSection
+                        }
+
+                        // Deck Progress Breakdown
+                        if !deckProgress.isEmpty {
+                            deckProgressSection
+                        }
 
                         // Quick Actions
                         quickActions
@@ -362,6 +416,291 @@ struct DashboardView: View {
             .cardStyle()
         }
     }
+
+    // MARK: - Study Streak Card
+
+    private var streakCard: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            HStack {
+                Image(systemName: "flame.fill")
+                    .foregroundStyle(streakService.stats.currentStreak > 0 ? .orange : Color.adaptive(
+                        light: AppTheme.Colors.Fallback.textTertiaryLight,
+                        dark: AppTheme.Colors.Fallback.textTertiaryDark
+                    ))
+                Text("Study Streak")
+                    .font(AppTheme.Typography.headline)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        )
+                    )
+                Spacer()
+            }
+
+            HStack(spacing: AppTheme.Spacing.xl) {
+                // Current streak
+                VStack(spacing: AppTheme.Spacing.xxs) {
+                    Text("\(streakService.stats.currentStreak)")
+                        .font(AppTheme.Typography.statLarge)
+                        .foregroundStyle(streakService.stats.currentStreak > 0 ? .orange : Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        ))
+                    Text("Current")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                dark: AppTheme.Colors.Fallback.textSecondaryDark
+                            )
+                        )
+                }
+
+                // Best streak
+                VStack(spacing: AppTheme.Spacing.xxs) {
+                    Text("\(streakService.stats.longestStreak)")
+                        .font(AppTheme.Typography.statMedium)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textPrimaryLight,
+                                dark: AppTheme.Colors.Fallback.textPrimaryDark
+                            )
+                        )
+                    Text("Best")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                dark: AppTheme.Colors.Fallback.textSecondaryDark
+                            )
+                        )
+                }
+
+                // Total study days
+                VStack(spacing: AppTheme.Spacing.xxs) {
+                    Text("\(streakService.stats.totalStudyDays)")
+                        .font(AppTheme.Typography.statMedium)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textPrimaryLight,
+                                dark: AppTheme.Colors.Fallback.textPrimaryDark
+                            )
+                        )
+                    Text("Total Days")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                dark: AppTheme.Colors.Fallback.textSecondaryDark
+                            )
+                        )
+                }
+
+                Spacer()
+            }
+
+            // Weekly activity (uses existing component from StreakWidget.swift)
+            WeeklyActivityView(streakService: streakService)
+        }
+        .padding(AppTheme.Spacing.md)
+        .cardStyle()
+    }
+
+    // MARK: - Today's Progress Card
+
+    private var todayProgressCard: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            HStack {
+                Image(systemName: "calendar")
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        )
+                    )
+                Text("Today")
+                    .font(AppTheme.Typography.headline)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        )
+                    )
+                Spacer()
+            }
+
+            HStack(spacing: AppTheme.Spacing.lg) {
+                // Cards reviewed today
+                VStack(spacing: AppTheme.Spacing.xxs) {
+                    Text("\(cardsReviewedToday)")
+                        .font(AppTheme.Typography.statMedium)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.primaryLight,
+                                dark: AppTheme.Colors.Fallback.primaryDark
+                            )
+                        )
+                    Text("Reviewed")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                dark: AppTheme.Colors.Fallback.textSecondaryDark
+                            )
+                        )
+                }
+
+                // Due for review
+                VStack(spacing: AppTheme.Spacing.xxs) {
+                    Text("\(reviewDueCount)")
+                        .font(AppTheme.Typography.statMedium)
+                        .foregroundStyle(reviewDueCount > 0 ? .orange : AppTheme.Colors.Fallback.success)
+                    Text("Due")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                dark: AppTheme.Colors.Fallback.textSecondaryDark
+                            )
+                        )
+                }
+
+                // Today's accuracy
+                VStack(spacing: AppTheme.Spacing.xxs) {
+                    if let accuracy = streakService.todayAccuracy {
+                        Text("\(Int(accuracy * 100))%")
+                            .font(AppTheme.Typography.statMedium)
+                            .foregroundStyle(accuracy >= 0.8 ? AppTheme.Colors.Fallback.success : .orange)
+                    } else {
+                        Text("-")
+                            .font(AppTheme.Typography.statMedium)
+                            .foregroundStyle(
+                                Color.adaptive(
+                                    light: AppTheme.Colors.Fallback.textTertiaryLight,
+                                    dark: AppTheme.Colors.Fallback.textTertiaryDark
+                                )
+                            )
+                    }
+                    Text("Accuracy")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                dark: AppTheme.Colors.Fallback.textSecondaryDark
+                            )
+                        )
+                }
+
+                // All-time accuracy
+                VStack(spacing: AppTheme.Spacing.xxs) {
+                    if let accuracy = allTimeAccuracy {
+                        Text("\(Int(accuracy * 100))%")
+                            .font(AppTheme.Typography.statMedium)
+                            .foregroundStyle(
+                                Color.adaptive(
+                                    light: AppTheme.Colors.Fallback.textPrimaryLight,
+                                    dark: AppTheme.Colors.Fallback.textPrimaryDark
+                                )
+                            )
+                    } else {
+                        Text("-")
+                            .font(AppTheme.Typography.statMedium)
+                            .foregroundStyle(
+                                Color.adaptive(
+                                    light: AppTheme.Colors.Fallback.textTertiaryLight,
+                                    dark: AppTheme.Colors.Fallback.textTertiaryDark
+                                )
+                            )
+                    }
+                    Text("All-time")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(
+                            Color.adaptive(
+                                light: AppTheme.Colors.Fallback.textSecondaryLight,
+                                dark: AppTheme.Colors.Fallback.textSecondaryDark
+                            )
+                        )
+                }
+            }
+        }
+        .padding(AppTheme.Spacing.md)
+        .cardStyle()
+    }
+
+    // MARK: - JLPT Progress Section
+
+    private var jlptProgressSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            HStack {
+                Image(systemName: "graduationcap.fill")
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        )
+                    )
+                Text("JLPT Progress")
+                    .font(AppTheme.Typography.headline)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        )
+                    )
+            }
+
+            VStack(spacing: AppTheme.Spacing.sm) {
+                ForEach(jlptProgress, id: \.level) { item in
+                    JLPTProgressRow(
+                        level: item.level,
+                        mastered: item.mastered,
+                        learning: item.learning,
+                        total: item.total
+                    )
+                }
+            }
+            .padding(AppTheme.Spacing.md)
+            .cardStyle()
+        }
+    }
+
+    // MARK: - Deck Progress Section
+
+    private var deckProgressSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            HStack {
+                Image(systemName: "square.stack.3d.up.fill")
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        )
+                    )
+                Text("Deck Progress")
+                    .font(AppTheme.Typography.headline)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        )
+                    )
+            }
+
+            VStack(spacing: AppTheme.Spacing.sm) {
+                ForEach(deckProgress, id: \.deck.id) { item in
+                    DeckProgressRow(
+                        name: item.deck.name,
+                        mastered: item.mastered,
+                        learning: item.learning,
+                        total: item.total
+                    )
+                }
+            }
+            .padding(AppTheme.Spacing.md)
+            .cardStyle()
+        }
+    }
 }
 
 // MARK: - Supporting Views
@@ -559,9 +898,152 @@ struct RecentEntryRow: View {
     }
 }
 
+// MARK: - JLPT Progress Row
+
+struct JLPTProgressRow: View {
+    let level: String
+    let mastered: Int
+    let learning: Int
+    let total: Int
+
+    private var progressPercentage: CGFloat {
+        guard total > 0 else { return 0 }
+        return CGFloat(mastered + learning) / CGFloat(total)
+    }
+
+    private var masteredPercentage: CGFloat {
+        guard total > 0 else { return 0 }
+        return CGFloat(mastered) / CGFloat(total)
+    }
+
+    private var levelColor: Color {
+        switch level {
+        case "N5": return AppTheme.Colors.Fallback.jlptN5
+        case "N4": return AppTheme.Colors.Fallback.jlptN4
+        case "N3": return AppTheme.Colors.Fallback.jlptN3
+        case "N2": return AppTheme.Colors.Fallback.jlptN2
+        case "N1": return AppTheme.Colors.Fallback.jlptN1
+        default: return AppTheme.Colors.Fallback.primaryLight
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.xs) {
+            HStack {
+                Text(level)
+                    .font(AppTheme.Typography.captionBold)
+                    .foregroundStyle(levelColor)
+                    .frame(width: 30, alignment: .leading)
+
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        // Background
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(levelColor.opacity(0.15))
+                            .frame(height: 8)
+
+                        // Learning progress (lighter)
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(levelColor.opacity(0.5))
+                            .frame(width: geometry.size.width * progressPercentage, height: 8)
+
+                        // Mastered progress (solid)
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(levelColor)
+                            .frame(width: geometry.size.width * masteredPercentage, height: 8)
+                    }
+                }
+                .frame(height: 8)
+
+                Text("\(mastered + learning)/\(total)")
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                        )
+                    )
+                    .frame(width: 60, alignment: .trailing)
+            }
+        }
+    }
+}
+
+// MARK: - Deck Progress Row
+
+struct DeckProgressRow: View {
+    let name: String
+    let mastered: Int
+    let learning: Int
+    let total: Int
+
+    private var progressPercentage: CGFloat {
+        guard total > 0 else { return 0 }
+        return CGFloat(mastered + learning) / CGFloat(total)
+    }
+
+    private var masteredPercentage: CGFloat {
+        guard total > 0 else { return 0 }
+        return CGFloat(mastered) / CGFloat(total)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+            HStack {
+                Text(name)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textPrimaryLight,
+                            dark: AppTheme.Colors.Fallback.textPrimaryDark
+                        )
+                    )
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text("\(mastered + learning)/\(total)")
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(
+                        Color.adaptive(
+                            light: AppTheme.Colors.Fallback.textSecondaryLight,
+                            dark: AppTheme.Colors.Fallback.textSecondaryDark
+                        )
+                    )
+            }
+
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    // Background
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        ).opacity(0.15))
+                        .frame(height: 6)
+
+                    // Learning progress (lighter)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.adaptive(
+                            light: AppTheme.Colors.Fallback.primaryLight,
+                            dark: AppTheme.Colors.Fallback.primaryDark
+                        ).opacity(0.5))
+                        .frame(width: geometry.size.width * progressPercentage, height: 6)
+
+                    // Mastered progress (solid)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(AppTheme.Colors.Fallback.success)
+                        .frame(width: geometry.size.width * masteredPercentage, height: 6)
+                }
+            }
+            .frame(height: 6)
+        }
+    }
+}
+
 // MARK: - Preview
 
 #Preview {
     DashboardView()
-        .modelContainer(for: Entry.self, inMemory: true)
+        .modelContainer(for: [Entry.self, Deck.self], inMemory: true)
 }
